@@ -221,7 +221,7 @@ async function main() {
 
   console.log(`✅ ${weeklyQuests.length} quêtes WEEKLY créées`);
 
-  // ============================================
+// ============================================
   // 5. CRÉER LES SALLES PUBLIQUES
   // ============================================
   console.log('🏠 Création des salles publiques...');
@@ -257,14 +257,22 @@ async function main() {
   ];
 
   for (const room of publicRooms) {
-    await prisma.room.upsert({
+    // Vérifier si la salle existe déjà
+    const existingRoom = await prisma.room.findFirst({
       where: { name: room.name },
-      update: {},
-      create: room,
     });
+
+    if (!existingRoom) {
+      await prisma.room.create({
+        data: room,
+      });
+      console.log(`✅ Salle créée: ${room.name}`);
+    } else {
+      console.log(`⚠️ Salle déjà existante: ${room.name}`);
+    }
   }
 
-  console.log(`✅ ${publicRooms.length} salles publiques créées`);
+  console.log(`✅ Salles publiques vérifiées/créées`);
 
   // ============================================
   // RÉSUMÉ
