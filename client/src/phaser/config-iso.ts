@@ -7,7 +7,8 @@ export const createPhaserGame = (parent: string) => {
     width: 1200,
     height: 800,
     parent,
-    backgroundColor: '#1a1a2e',
+    // ✅ NOUVEAU
+    backgroundColor: '#000000',
     scene: [LobbySceneIso],
     physics: {
       default: 'arcade',

@@ -1,0 +1,197 @@
+.chat-input-container {
+  position: fixed;
+  bottom: 75px; /* Juste au-dessus du menu */
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 45;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 500px;
+  max-width: 90%;
+}
+
+.chat-input-form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(26, 26, 46, 0.95);
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(10px);
+}
+
+.chat-input-field {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: white;
+  font-size: 0.9rem;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.chat-input-field:focus {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(139, 92, 246, 0.6);
+  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.2);
+}
+
+.chat-input-field::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.chat-emoji-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 1.2rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.chat-emoji-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(139, 92, 246, 0.5);
+}
+
+.chat-mode-dropdown {
+  position: relative;
+}
+
+.chat-mode-btn {
+  background: rgba(99, 102, 241, 0.8);
+  border: 1px solid rgba(139, 92, 246, 0.5);
+  border-radius: 8px;
+  padding: 8px 14px;
+  color: white;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.chat-mode-btn:hover {
+  background: rgba(99, 102, 241, 1);
+  border-color: rgba(139, 92, 246, 0.8);
+}
+
+.chat-mode-menu {
+  position: absolute;
+  bottom: 100%;
+  right: 0;
+  margin-bottom: 8px;
+  background: rgba(26, 26, 46, 0.98);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  border-radius: 8px;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 140px;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.5);
+}
+
+.chat-mode-menu button {
+  background: rgba(255, 255, 255, 0.05);
+  border: none;
+  border-radius: 6px;
+  padding: 8px 12px;
+  color: white;
+  font-size: 0.85rem;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s ease;
+}
+
+.chat-mode-menu button:hover {
+  background: rgba(99, 102, 241, 0.5);
+}
+
+.chat-send-btn {
+  background: rgba(99, 102, 241, 0.8);
+  border: 1px solid rgba(139, 92, 246, 0.5);
+  border-radius: 8px;
+  padding: 8px 16px;
+  color: white;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.chat-send-btn:hover:not(:disabled) {
+  background: rgba(99, 102, 241, 1);
+  border-color: rgba(139, 92, 246, 0.8);
+  transform: translateY(-1px);
+}
+
+.chat-send-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.whisper-target-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(139, 92, 246, 0.2);
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(139, 92, 246, 0.3);
+}
+
+.whisper-target-bar label {
+  color: white;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.whisper-target-bar select {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  border-radius: 6px;
+  padding: 6px 10px;
+  color: white;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.whisper-target-bar select option {
+  background: #1a1a2e;
+  color: white;
+}
+
+.emoji-picker {
+  background: rgba(26, 26, 46, 0.98);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  border-radius: 12px;
+  padding: 12px;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.5);
+}
+
+.emoji-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  border-radius: 8px;
+  padding: 10px;
+  font-size: 1.5rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.emoji-btn:hover {
+  background: rgba(99, 102, 241, 0.3);
+  border-color: rgba(139, 92, 246, 0.5);
+  transform: scale(1.1);
+}

@@ -1,6 +1,6 @@
 .experience-bar-container {
   position: fixed;
-  bottom: 88px;
+  top: 80px; /* ✅ EN HAUT maintenant */
   left: 50%;
   transform: translateX(-50%);
   z-index: 40;

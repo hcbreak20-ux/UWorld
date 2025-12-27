@@ -11,6 +11,7 @@ import { authAPI, roomAPI } from '@/services/api';
 import type { Room } from '@/types';
 import './LobbyPage.css';
 import { ExperienceBar } from '@/components/ExperienceBar';
+import { ChatInput } from '@/components/ChatInput';
 
 export const LobbyPage: React.FC = () => {
   const navigate = useNavigate();
@@ -157,6 +158,9 @@ export const LobbyPage: React.FC = () => {
 
       {/* Barre d'expérience */}
       <ExperienceBar />
+
+            {/* Nouvelle barre de chat */}
+      <ChatInput />
     </div>
   );
 };
