@@ -10,6 +10,7 @@ import { socketService } from '@/services/socket';
 import { authAPI, roomAPI } from '@/services/api';
 import type { Room } from '@/types';
 import './LobbyPage.css';
+import { ExperienceBar } from '@/components/ExperienceBar';
 
 export const LobbyPage: React.FC = () => {
   const navigate = useNavigate();
@@ -122,8 +123,12 @@ export const LobbyPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Inventaire style Habbo */}
+      {/* Inventaire */}
       <InventoryPanel />
+
+      {/* Barre d'expérience */}
+      <ExperienceBar />
+
     </div>
   );
 };

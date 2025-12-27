@@ -5,10 +5,8 @@ import { Link } from 'react-router-dom';
 
 export const UserInfo: React.FC = () => {
   const { user } = useStore();
-
+  
   if (!user) return null;
-
-  const experienceProgress = (user.experience % 100) / 100 * 100; // Simple calcul
 
   return (
     <div className="user-info">
@@ -17,7 +15,7 @@ export const UserInfo: React.FC = () => {
           {user.username.charAt(0).toUpperCase()}
         </div>
       </div>
-
+      
       <div className="user-details">
         <h2>{user.username}</h2>
         <p className="user-motto">"{user.motto}"</p>
@@ -40,27 +38,14 @@ export const UserInfo: React.FC = () => {
         </div>
         
         <Link to="/avatar" className="btn-customize">
-         🎨 Personnaliser Avatar
+          🎨 Personnaliser Avatar
         </Link>
-
+        
         {user?.isAdmin && (
-        <Link to="/admin" className="btn-admin">
-        ⚙️ Panel Admin
-        </Link>
+          <Link to="/admin" className="btn-admin">
+            ⚙️ Panel Admin
+          </Link>
         )}
-
-        <div className="experience-bar">
-          <div className="exp-label">
-            <span>Expérience</span>
-            <span>{user.experience} XP</span>
-          </div>
-          <div className="exp-progress">
-            <div 
-              className="exp-fill" 
-              style={{ width: `${experienceProgress}%` }}
-            ></div>
-          </div>
-        </div>
       </div>
     </div>
   );
