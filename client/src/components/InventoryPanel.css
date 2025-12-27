@@ -1,12 +1,11 @@
 /* ===================================
-   BARRE D'OUTILS STYLE HABBO (BAS)
+   BARRE D'OUTILS MENU (BAS)
    =================================== */
 
 .habbo-toolbar {
   position: fixed;
   bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 20px; /* ✅ À gauche au lieu de centré */
   display: flex;
   gap: 8px;
   background: rgba(26, 26, 46, 0.95);
