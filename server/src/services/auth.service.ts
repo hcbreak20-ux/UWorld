@@ -1,9 +1,9 @@
 import bcrypt from 'bcrypt';
-import { PrismaClient } from '@prisma/client';
+// ✅ NOUVEAU
+import { prisma } from '../lib/prisma';
 import { generateToken } from '../utils/jwt';
 import { questService } from './quest.service'; // ← TEMPORAIREMENT DÉSACTIVÉ
 
-const prisma = new PrismaClient();
 
 export interface RegisterData {
   username: string;

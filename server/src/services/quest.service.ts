@@ -1,6 +1,6 @@
-import { PrismaClient, QuestType, ResetTime } from '@prisma/client';
-
-const prisma = new PrismaClient();
+// ✅ NOUVEAU
+import { QuestType, ResetTime } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 
 export class QuestService {
   /**
