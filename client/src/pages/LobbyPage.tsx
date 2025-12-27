@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { createPhaserGame } from '@/phaser/config-iso';
 import { ChatBox } from '@/components/ChatBox';
 import { RoomList } from '@/components/RoomList';
-import { UserInfo } from '@/components/UserInfo';
 import { InventoryPanel } from '@/components/InventoryPanel';
+import { ProfilePanel } from '@/components/ProfilePanel';
 import { useStore } from '@/store';
 import { socketService } from '@/services/socket';
 import { authAPI, roomAPI } from '@/services/api';
@@ -19,6 +19,7 @@ export const LobbyPage: React.FC = () => {
   
   const [rooms, setRooms] = useState<Room[]>([]);
   const [showRoomList, setShowRoomList] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -97,7 +98,16 @@ export const LobbyPage: React.FC = () => {
   return (
     <div className="lobby-page">
       <div className="lobby-header">
-        <h1>🏨 UWorld</h1>
+        <div className="header-left">
+          <h1>🏨 UWorld</h1>
+          <button 
+            className="btn-profile"
+            onClick={() => setShowProfile(!showProfile)}
+          >
+            👤 Profil
+          </button>
+        </div>
+
         <div className="header-actions">
           {/* uCoins */}
           <div className="header-currency">
@@ -118,14 +128,14 @@ export const LobbyPage: React.FC = () => {
       </div>
 
       <div className="lobby-content">
-        <div className="left-panel">
-          <UserInfo />
-          {showRoomList && (
+        {/* Panneau gauche avec liste des salles */}
+        {showRoomList && (
+          <div className="left-panel">
             <RoomList rooms={rooms} onJoinRoom={handleJoinRoom} />
-          )}
-        </div>
+          </div>
+        )}
 
-        <div className="game-panel">
+        <div className={`game-panel ${!showRoomList ? 'full-width' : ''}`}>
           <div id="game-container"></div>
         </div>
 
@@ -133,6 +143,11 @@ export const LobbyPage: React.FC = () => {
           <ChatBox />
         </div>
       </div>
+
+      {/* Panneau de profil */}
+      {showProfile && (
+        <ProfilePanel onClose={() => setShowProfile(false)} />
+      )}
 
       {/* Inventaire avec bouton Salles */}
       <InventoryPanel 
