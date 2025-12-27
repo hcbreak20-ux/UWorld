@@ -1,5 +1,5 @@
 {
-  "name": "virtual-world-server",
+  "name": "uworld-server",
   "version": "1.0.0",
   "description": "Backend pour jeu virtuel social",
   "main": "dist/index.js",

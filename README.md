@@ -1,6 +1,6 @@
-# 🏨 Virtual World - Jeu Social Isométrique
+# 🏨 Uworld- Jeu Social 
 
-Un monde virtuel social inspiré de Habbo Hotel avec chat en temps réel, système de salles, avatars personnalisables et économie virtuelle compétitive.
+Un monde virtuel social avec chat en temps réel, système de salles, avatars personnalisables et économie virtuelle compétitive.
 
 ## 🎯 Fonctionnalités (MVP)
 

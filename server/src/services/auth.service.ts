@@ -1,7 +1,7 @@
 import bcrypt from 'bcrypt';
 import { PrismaClient } from '@prisma/client';
 import { generateToken } from '../utils/jwt';
-// import { questService } from './quest.service'; // ← TEMPORAIREMENT DÉSACTIVÉ
+import { questService } from './quest.service'; // ← TEMPORAIREMENT DÉSACTIVÉ
 
 const prisma = new PrismaClient();
 
@@ -62,7 +62,8 @@ export class AuthService {
 try {
   await questService.assignTutorialQuests(user.id);
   await questService.assignDailyWeeklyQuests(user.id);
-  console.log(`✅ Quêtes assignées au nouveau joueur: ${user.username}`);
+  // ✅ NOUVEAU (ajoute la parenthèse ouvrante)
+console.log(`✅ Quêtes assignées au nouveau joueur: ${user.username}`);
 } catch (error) {
   console.error('Erreur lors de l\'assignation des quêtes:', error);
   // Ne pas bloquer l'inscription si l'assignation échoue

@@ -6,7 +6,7 @@ const router = Router();
 const prisma = new PrismaClient();
 
 // Middleware pour vérifier si l'utilisateur est admin
-const requireAdmin = async (req: any, res: any, next: any) => {
+const requireAdmin = async (req: AuthRequest, res: any, next: any) => {
   try {
     const user = await prisma.user.findUnique({
       where: { id: req.user!.userId },
@@ -144,7 +144,7 @@ router.put('/room/:roomId/wallpaper', authMiddleware, requireAdmin, async (req, 
 });
 
 // GET /api/admin/check - Vérifier si l'utilisateur est admin
-router.get('/check', authMiddleware, async (req, res) => {
+router.get('/check', authMiddleware, async (req: AuthRequest, res: any) => {
   try {
     const user = await prisma.user.findUnique({
       where: { id: req.user!.userId },

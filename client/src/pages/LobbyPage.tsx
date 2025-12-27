@@ -96,7 +96,7 @@ export const LobbyPage: React.FC = () => {
   return (
     <div className="lobby-page">
       <div className="lobby-header">
-        <h1>🏨 Virtual World</h1>
+        <h1>🏨 UWorld</h1>
         <div className="header-actions">
           <button onClick={() => setShowRoomList(!showRoomList)}>
             📋 Salles
