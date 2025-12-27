@@ -255,3 +255,41 @@
 .chat-messages::-webkit-scrollbar-thumb:hover {
   background: rgba(102, 126, 234, 0.7);
 }
+
+.chat-toggle-btn {
+  position: absolute;
+  left: -40px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(99, 102, 241, 0.9);
+  border: 1px solid rgba(139, 92, 246, 0.5);
+  color: white;
+  width: 32px;
+  height: 64px;
+  border-radius: 8px 0 0 8px;
+  cursor: pointer;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  z-index: 10;
+}
+
+.chat-toggle-btn:hover {
+  background: rgba(99, 102, 241, 1);
+  left: -45px;
+}
+
+.chat-box.chat-hidden {
+  width: 0;
+  min-width: 0;
+  overflow: hidden;
+  border: none;
+  padding: 0;
+}
+
+.chat-box.chat-hidden .chat-toggle-btn {
+  left: 0;
+  border-radius: 8px 0 0 8px;
+}

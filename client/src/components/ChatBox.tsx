@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useStore } from '@/store';
 import { socketService } from '@/services/socket';
 import type { Message } from '@/types';
@@ -8,11 +8,13 @@ type ChatMode = 'normal' | 'shout' | 'whisper';
 
 export const ChatBox: React.FC = () => {
   const { messages, addMessage, user } = useStore();
+  const [isVisible, setIsVisible] = useState(true); // ✅ État pour cacher/afficher
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // Écouter les nouveaux messages
     socketService.onChatMessage((message: Message) => {
+      console.log('📩 Message reçu dans ChatBox:', message); // ✅ Debug
       addMessage(message);
     });
 
@@ -24,6 +26,10 @@ export const ChatBox: React.FC = () => {
   useEffect(() => {
     // Auto-scroll vers le bas
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  useEffect(() => {
+    console.log('💬 Messages dans le store:', messages); // ✅ Debug
   }, [messages]);
 
   const formatTime = (dateString: string) => {
@@ -40,41 +46,54 @@ export const ChatBox: React.FC = () => {
   };
 
   return (
-    <div className="chat-box">
-      <div className="chat-header">
-        <h3>💬 Chat</h3>
-      </div>
+    <div className={`chat-box ${!isVisible ? 'chat-hidden' : ''}`}>
+      {/* Bouton toggle */}
+      <button 
+        className="chat-toggle-btn"
+        onClick={() => setIsVisible(!isVisible)}
+        title={isVisible ? 'Cacher le chat' : 'Afficher le chat'}
+      >
+        {isVisible ? '▶' : '◀'}
+      </button>
 
-      <div className="chat-messages">
-        {messages.length === 0 && (
-          <div className="chat-empty">
-            <p>Aucun message. Soyez le premier à parler!</p>
+      {isVisible && (
+        <>
+          <div className="chat-header">
+            <h3>💬 Chat</h3>
           </div>
-        )}
-        
-        {messages.map((message, index) => (
-          <div
-            key={`${message.id}-${index}`}
-            className={`chat-message ${message.user.id === user?.id ? 'own-message' : ''} ${message.type || 'normal'}`}
-          >
-            <div className="message-header">
-              <span className="message-mode-icon">
-                {getChatModeIcon((message as any).type as ChatMode || 'normal')}
-              </span>
-              <span className="message-username" style={{ color: getUserColor(message.user.level) }}>
-                {message.user.username}
-              </span>
-              {(message as any).type === 'whisper' && (message as any).whisperTarget && (
-                <span className="whisper-arrow"> → {(message as any).whisperTarget}</span>
-              )}
-              <span className="message-level">Lvl {message.user.level}</span>
-              <span className="message-time">{formatTime(message.createdAt)}</span>
-            </div>
-            <div className="message-content">{message.content}</div>
+
+          <div className="chat-messages">
+            {messages.length === 0 && (
+              <div className="chat-empty">
+                <p>Aucun message. Soyez le premier à parler!</p>
+              </div>
+            )}
+            
+            {messages.map((message, index) => (
+              <div
+                key={`${message.id}-${index}`}
+                className={`chat-message ${message.user.id === user?.id ? 'own-message' : ''} ${message.type || 'normal'}`}
+              >
+                <div className="message-header">
+                  <span className="message-mode-icon">
+                    {getChatModeIcon((message as any).type as ChatMode || 'normal')}
+                  </span>
+                  <span className="message-username" style={{ color: getUserColor(message.user.level) }}>
+                    {message.user.username}
+                  </span>
+                  {(message as any).type === 'whisper' && (message as any).whisperTarget && (
+                    <span className="whisper-arrow"> → {(message as any).whisperTarget}</span>
+                  )}
+                  <span className="message-level">Lvl {message.user.level}</span>
+                  <span className="message-time">{formatTime(message.createdAt)}</span>
+                </div>
+                <div className="message-content">{message.content}</div>
+              </div>
+            ))}
+            <div ref={messagesEndRef} />
           </div>
-        ))}
-        <div ref={messagesEndRef} />
-      </div>
+        </>
+      )}
     </div>
   );
 };

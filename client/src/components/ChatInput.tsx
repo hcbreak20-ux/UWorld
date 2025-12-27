@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useStore } from '@/store';
 import { socketService } from '@/services/socket';
 import './ChatInput.css';
@@ -14,6 +14,13 @@ export const ChatInput: React.FC = () => {
   const [whisperTarget, setWhisperTarget] = useState<string>('');
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showModeDropdown, setShowModeDropdown] = useState(false);
+  
+  const inputRef = useRef<HTMLInputElement>(null); // ✅ Nouveau ref
+
+  // ✅ Focus automatique au montage
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
 
   // Récupérer la liste des joueurs pour le whisper
   const otherPlayers = Object.entries(players)
@@ -35,11 +42,20 @@ export const ChatInput: React.FC = () => {
     socketService.sendMessage(inputMessage.trim(), chatMode, whisperTarget);
     setInputMessage('');
     setShowEmojiPicker(false);
+    
+    // ✅ Re-focus l'input après envoi
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 0);
   };
 
   const addEmoji = (emoji: string) => {
     setInputMessage(prev => prev + emoji);
     setShowEmojiPicker(false);
+    // ✅ Re-focus après emoji
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 0);
   };
 
   const getChatModeLabel = (mode: ChatMode) => {
@@ -56,6 +72,10 @@ export const ChatInput: React.FC = () => {
     if (mode !== 'whisper') {
       setWhisperTarget('');
     }
+    // ✅ Re-focus après changement de mode
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 0);
   };
 
   return (
@@ -63,6 +83,7 @@ export const ChatInput: React.FC = () => {
       <form className="chat-input-form" onSubmit={handleSubmit}>
         {/* Input principal */}
         <input
+          ref={inputRef} // ✅ Ajout du ref
           type="text"
           value={inputMessage}
           onChange={(e) => setInputMessage(e.target.value)}
