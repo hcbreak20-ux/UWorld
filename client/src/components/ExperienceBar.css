@@ -5,6 +5,8 @@
   transform: translateX(-50%);
   z-index: 40;
   pointer-events: none;
+  max-width: 1400px; /* Même largeur max que le canvas */
+  width: calc(100% - 700px); /* Soustraire largeur panels gauche + droite */
 }
 
 .experience-bar-wrapper {
