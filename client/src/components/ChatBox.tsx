@@ -11,17 +11,16 @@ export const ChatBox: React.FC = () => {
   const [isVisible, setIsVisible] = useState(true); // ✅ État pour cacher/afficher
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    // Écouter les nouveaux messages
-    socketService.onChatMessage((message: Message) => {
-      console.log('📩 Message reçu dans ChatBox:', message); // ✅ Debug
-      addMessage(message);
-    });
+useEffect(() => {
+  // Écouter les nouveaux messages
+  const cleanup = socketService.onChatMessage((message: Message) => {
+    console.log('📩 Message reçu dans ChatBox:', message);
+    addMessage(message);
+  });
 
-    return () => {
-      // Le cleanup est géré par socketService.onChatMessage()
-    };
-  }, [addMessage]);
+  // ✅ Cleanup quand le composant unmount
+  return cleanup;
+}, [addMessage]);
 
   useEffect(() => {
     // Auto-scroll vers le bas

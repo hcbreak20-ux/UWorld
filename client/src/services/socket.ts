@@ -6,10 +6,10 @@ const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3001';
 class SocketService {
   private socket: Socket | null = null;
   private token: string | null = null;
+  private chatListeners: Set<(message: Message) => void> = new Set(); // ✅ NOUVEAU
 
   connect(token: string) {
     this.token = token;
-
     this.socket = io(SOCKET_URL, {
       auth: { token },
       reconnection: true,
@@ -29,6 +29,12 @@ class SocketService {
       console.error('Erreur Socket.IO:', error.message);
     });
 
+    // ✅ NOUVEAU: Écouter les messages une seule fois et broadcaster à tous les listeners
+    this.socket.on('chat_message', (message: Message) => {
+      console.log('📩 Message Socket reçu:', message);
+      this.chatListeners.forEach(callback => callback(message));
+    });
+
     return this.socket;
   }
 
@@ -37,6 +43,7 @@ class SocketService {
       this.socket.disconnect();
       this.socket = null;
     }
+    this.chatListeners.clear(); // ✅ Nettoyer les listeners
   }
 
   // Rejoindre une salle
@@ -75,11 +82,16 @@ class SocketService {
     this.socket.emit('chat_message', { message, type, whisperTarget });
   }
 
+  // ✅ NOUVEAU: Ajouter un listener au lieu de remplacer
   onChatMessage(callback: (message: Message) => void) {
-    if (!this.socket) return;
-    // Retirer tous les anciens listeners pour 'chat_message' pour éviter les doublons
-    this.socket.off('chat_message');
-    this.socket.on('chat_message', callback);
+    console.log('➕ Ajout listener chat');
+    this.chatListeners.add(callback);
+    
+    // Retourner une fonction de cleanup
+    return () => {
+      console.log('➖ Retrait listener chat');
+      this.chatListeners.delete(callback);
+    };
   }
 
   // Whisper
