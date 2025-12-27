@@ -1,6 +1,6 @@
-// ✅ NOUVEAU
 import { QuestType, ResetTime } from '@prisma/client';
 import { prisma } from '../lib/prisma';
+import { levelService } from './level.service';
 
 export class QuestService {
   /**
@@ -363,6 +363,7 @@ export class QuestService {
         },
         include: {
           quest: true,
+          user: true,
         },
       });
 
@@ -378,14 +379,16 @@ export class QuestService {
         throw new Error('Récompense déjà réclamée');
       }
 
-      // Donner les récompenses
+      // Donner les coins
       await prisma.user.update({
         where: { id: userId },
         data: {
-          experience: { increment: userQuest.quest.xpReward },
           coins: { increment: userQuest.quest.coinsReward },
         },
       });
+
+      // Ajouter l'XP avec le système de level
+      const levelResult = await levelService.addXp(userId, userQuest.quest.xpReward);
 
       // Marquer la récompense comme réclamée
       await prisma.userQuest.update({
@@ -395,11 +398,21 @@ export class QuestService {
 
       console.log(`🎁 Récompense réclamée: ${userQuest.quest.name} → ${userQuest.quest.xpReward} XP + ${userQuest.quest.coinsReward} coins`);
 
+      if (levelResult.leveledUp) {
+        console.log(`🎊 ${userQuest.user.username} a atteint le niveau ${levelResult.newLevel}!`);
+      }
+
       return {
         xp: userQuest.quest.xpReward,
         coins: userQuest.quest.coinsReward,
         item: userQuest.quest.itemReward,
         badge: userQuest.quest.badgeReward,
+        levelUp: levelResult.leveledUp ? {
+          oldLevel: levelResult.oldLevel,
+          newLevel: levelResult.newLevel,
+          currentXp: levelResult.currentXp,
+          xpForNextLevel: levelResult.xpForNextLevel,
+        } : null,
       };
     } catch (error) {
       console.error('Erreur lors de la réclamation de récompense:', error);
