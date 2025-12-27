@@ -1,0 +1,242 @@
+.admin-panel {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 20px;
+}
+
+.admin-panel-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 20px;
+  padding: 30px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.admin-header {
+  text-align: center;
+  margin-bottom: 30px;
+  padding-bottom: 20px;
+  border-bottom: 3px solid #667eea;
+}
+
+.admin-header h1 {
+  margin: 0 0 10px 0;
+  color: #333;
+}
+
+.admin-header p {
+  margin: 0;
+  color: #666;
+  font-size: 16px;
+}
+
+.admin-content {
+  display: grid;
+  grid-template-columns: 400px 1fr;
+  gap: 30px;
+}
+
+/* Sections */
+.admin-section {
+  background: #f9f9f9;
+  border-radius: 15px;
+  padding: 20px;
+}
+
+.admin-section h2 {
+  margin: 0 0 15px 0;
+  color: #444;
+  font-size: 20px;
+}
+
+.admin-section h3 {
+  margin: 20px 0 10px 0;
+  color: #555;
+  font-size: 16px;
+}
+
+/* Liste des salles */
+.rooms-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+.room-card {
+  background: white;
+  border: 2px solid #ddd;
+  border-radius: 10px;
+  padding: 15px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.room-card:hover {
+  border-color: #667eea;
+  transform: translateX(5px);
+}
+
+.room-card.selected {
+  border-color: #667eea;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+}
+
+.room-name {
+  font-weight: bold;
+  font-size: 16px;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.room-info {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 5px;
+}
+
+.room-owner {
+  font-size: 12px;
+  color: #999;
+}
+
+/* Grille des sols */
+.floor-category {
+  margin-bottom: 25px;
+}
+
+.floor-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 15px;
+}
+
+.floor-option {
+  background: white;
+  border: 3px solid #ddd;
+  border-radius: 10px;
+  padding: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+}
+
+.floor-option:hover {
+  border-color: #667eea;
+  transform: translateY(-3px);
+  box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+}
+
+.floor-option.selected {
+  border-color: #667eea;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.2) 0%, rgba(118, 75, 162, 0.2) 100%);
+  box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+}
+
+.floor-preview {
+  width: 100%;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 8px;
+  background: #f5f5f5;
+  border-radius: 5px;
+}
+
+.floor-preview img {
+  max-width: 64px;
+  max-height: 50px;
+  image-rendering: pixelated;
+}
+
+.floor-name {
+  font-size: 12px;
+  color: #666;
+  font-weight: 500;
+}
+
+/* Actions */
+.admin-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 15px;
+  margin-top: 25px;
+  padding-top: 20px;
+  border-top: 2px solid #ddd;
+}
+
+.admin-actions button {
+  padding: 12px 30px;
+  border: none;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.btn-cancel {
+  background: #e0e0e0;
+  color: #333;
+}
+
+.btn-cancel:hover {
+  background: #d0d0d0;
+}
+
+.btn-save {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.btn-save:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+}
+
+/* Loading et Erreur */
+.admin-panel-loading,
+.admin-panel-error {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  font-size: 24px;
+}
+
+.admin-panel-error h2 {
+  margin: 0 0 15px 0;
+}
+
+.admin-panel-error p {
+  margin: 0;
+  font-size: 18px;
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+  .admin-content {
+    grid-template-columns: 1fr;
+  }
+
+  .rooms-list {
+    max-height: 300px;
+  }
+}
+
+@media (max-width: 768px) {
+  .floor-grid {
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  }
+
+  .admin-panel-container {
+    padding: 20px;
+  }
+}

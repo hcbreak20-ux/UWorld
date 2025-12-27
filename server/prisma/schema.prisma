@@ -1,0 +1,173 @@
+// Schéma Prisma pour Virtual World
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  username  String   @unique
+  email     String   @unique
+  password  String
+  coins     Int      @default(1000)
+  gems      Int      @default(0)
+  level     Int      @default(1)
+  experience Int     @default(0)
+  motto     String   @default("Je suis nouveau!")
+  avatar    Json     @default("{\"gender\":\"male\",\"headType\":1,\"hairStyle\":1,\"clothingStyle\":1,\"skinColor\":\"light\",\"hairColor\":\"brown\",\"clothingColor\":\"blue\",\"pantsColor\":\"blue\"}")
+  isAdmin   Boolean  @default(false)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  lastLogin DateTime @default(now())
+  
+  // Relations
+  ownedRooms Room[]   @relation("RoomOwner")
+  messages   Message[]
+  userQuests UserQuest[]
+  
+  @@index([username])
+  @@index([coins(sort: Desc)])
+}
+
+model Room {
+  id          String   @id @default(uuid())
+  name        String
+  description String   @default("")
+  ownerId     String
+  isPublic    Boolean  @default(true)
+  maxUsers    Int      @default(25)
+  password    String?
+  
+  // Layout et décoration
+  layout      String   @default("basic")
+  furnitures  Json     @default("[]")
+  wallpaper   String   @default("default")
+  floor       String   @default("default")
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  owner       User     @relation("RoomOwner", fields: [ownerId], references: [id])
+  messages    Message[]
+  
+  @@index([isPublic])
+  @@index([ownerId])
+}
+
+model Message {
+  id        String   @id @default(uuid())
+  content   String
+  userId    String
+  roomId    String
+  type      String   @default("chat") // chat, whisper, system
+  
+  createdAt DateTime @default(now())
+  
+  // Relations
+  user      User     @relation(fields: [userId], references: [id])
+  room      Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  
+  @@index([roomId])
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model Economy {
+  id          String   @id @default(uuid())
+  totalCoins  BigInt   @default(0)
+  totalGems   BigInt   @default(0)
+  
+  updatedAt   DateTime @updatedAt
+}
+
+// ===== SYSTÈME DE QUÊTES =====
+
+model Quest {
+  id          String    @id @default(uuid())
+  name        String
+  description String
+  type        QuestType // TUTORIAL, DAILY, WEEKLY, SPECIAL, HIDDEN
+  category    String    // "social", "decoration", "exploration", "time"
+  
+  // Objectifs
+  targetType  String    // "send_messages", "place_furniture", "visit_rooms", etc.
+  targetCount Int       // Combien de fois il faut faire l'action
+  
+  // Récompenses
+  xpReward    Int       @default(0)
+  coinsReward Int       @default(0)
+  itemReward  String?   // ID ou type du meuble récompense (optionnel)
+  badgeReward String?   // Nom du badge à donner (optionnel)
+  
+  // Timing & Reset
+  resetTime   ResetTime // NEVER, DAILY, WEEKLY, MONTHLY
+  
+  // Ordre pour quêtes tutorial (optionnel)
+  order       Int?
+  
+  // Activation
+  isActive    Boolean   @default(true)
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  // Relations
+  userQuests  UserQuest[]
+  
+  @@index([type])
+  @@index([isActive])
+  @@unique([name])  // ← AJOUTER CETTE LIGNE
+}
+
+model UserQuest {
+  id          String    @id @default(uuid())
+  userId      String
+  questId     String
+  
+  // Progression
+  progress    Int       @default(0)
+  completed   Boolean   @default(false)
+  completedAt DateTime?
+  
+  // Pour daily/weekly reset
+  lastReset   DateTime? // Dernière fois que la quête a été reset
+  metadata      Json?     @default("{}")  // ← AJOUTER CETTE LIGNE
+  
+  // Récompense réclamée
+  rewardClaimed Boolean @default(false)
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  // Relations
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quest       Quest     @relation(fields: [questId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, questId])
+  @@index([userId])
+  @@index([questId])
+  @@index([completed])
+}
+
+// ===== ENUMS =====
+
+enum QuestType {
+  TUTORIAL  // Quêtes pour débutants (une seule fois)
+  DAILY     // Quêtes quotidiennes (reset chaque jour)
+  WEEKLY    // Quêtes hebdomadaires (reset chaque semaine)
+  SPECIAL   // Quêtes d'événements (saisonnières)
+  HIDDEN    // Achievements cachés
+}
+
+enum ResetTime {
+  NEVER   // Quête unique (tutorial, hidden)
+  DAILY   // Reset chaque jour à minuit
+  WEEKLY  // Reset chaque lundi
+  MONTHLY // Reset le 1er du mois
+}

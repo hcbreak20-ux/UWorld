@@ -1,0 +1,372 @@
+/* ===================================
+   BARRE D'OUTILS STYLE HABBO (BAS)
+   =================================== */
+
+.habbo-toolbar {
+  position: fixed;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 5px;
+  background: rgba(0, 0, 0, 0.8);
+  padding: 8px;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  border: 2px solid #444;
+}
+
+.toolbar-button {
+  width: 50px;
+  height: 50px;
+  background: linear-gradient(180deg, #555 0%, #333 100%);
+  border: 2px solid #666;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.toolbar-button:hover:not(.disabled) {
+  background: linear-gradient(180deg, #666 0%, #444 100%);
+  border-color: #888;
+  transform: translateY(-2px);
+}
+
+.toolbar-button.active {
+  background: linear-gradient(180deg, #4a90e2 0%, #2e5f8a 100%);
+  border-color: #6bb3ff;
+  box-shadow: 0 0 10px rgba(74, 144, 226, 0.5);
+}
+
+.toolbar-button.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.toolbar-icon {
+  font-size: 28px;
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.5));
+}
+
+/* Badge de notification (pour plus tard) */
+.toolbar-button::after {
+  content: '';
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  width: 18px;
+  height: 18px;
+  background: #ff4444;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  display: none;
+  font-size: 10px;
+  font-weight: bold;
+  color: white;
+  align-items: center;
+  justify-content: center;
+}
+
+.toolbar-button.has-notification::after {
+  display: flex;
+  content: attr(data-count);
+}
+
+/* Animation de scintillement pour les quêtes */
+.toolbar-button.quest-glow {
+  animation: questGlow 2s ease-in-out infinite;
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
+}
+
+@keyframes questGlow {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+    border-color: #888;
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(255, 215, 0, 1), 0 0 40px rgba(255, 215, 0, 0.6);
+    border-color: #ffd700;
+  }
+}
+
+/* ===================================
+   PANNEAU D'INVENTAIRE
+   =================================== */
+
+.inventory-panel {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 700px;
+  max-width: 90vw;
+  height: 450px;
+  background: #2a2a2a;
+  border: 3px solid #555;
+  border-radius: 15px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+  z-index: 999;
+  display: flex;
+  flex-direction: column;
+  animation: panelSlideUp 0.3s ease-out;
+  overflow: hidden;
+}
+
+@keyframes panelSlideUp {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+/* En-tête du panneau */
+.inventory-header {
+  background: linear-gradient(180deg, #4a4a4a 0%, #2a2a2a 100%);
+  padding: 15px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 2px solid #555;
+}
+
+.inventory-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: white;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.inventory-title-icon {
+  font-size: 24px;
+}
+
+.inventory-close-btn {
+  background: #444;
+  border: 2px solid #666;
+  color: white;
+  width: 35px;
+  height: 35px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 20px;
+  font-weight: bold;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.inventory-close-btn:hover {
+  background: #ff4444;
+  border-color: #ff6666;
+}
+
+/* Onglets */
+.inventory-tabs {
+  display: flex;
+  gap: 5px;
+  padding: 10px 15px;
+  background: #1a1a1a;
+  border-bottom: 2px solid #333;
+}
+
+.inventory-tab {
+  padding: 10px 20px;
+  background: #2a2a2a;
+  border: 2px solid #444;
+  border-radius: 8px 8px 0 0;
+  color: #999;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-weight: 500;
+}
+
+.inventory-tab:hover {
+  background: #333;
+  color: #ccc;
+}
+
+.inventory-tab.active {
+  background: #3a3a3a;
+  border-color: #666;
+  color: white;
+  border-bottom: 2px solid #3a3a3a;
+  margin-bottom: -2px;
+}
+
+/* Contenu */
+.inventory-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  background: #3a3a3a;
+}
+
+/* Grille de meubles */
+.furniture-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 12px;
+}
+
+.furniture-item {
+  background: linear-gradient(180deg, #4a4a4a 0%, #2a2a2a 100%);
+  border: 2px solid #555;
+  border-radius: 10px;
+  padding: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+  position: relative;
+  min-height: 110px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.furniture-item:hover {
+  border-color: #4a90e2;
+  background: linear-gradient(180deg, #5a5a5a 0%, #3a3a3a 100%);
+  transform: translateY(-3px);
+  box-shadow: 0 5px 15px rgba(74, 144, 226, 0.3);
+}
+
+.furniture-item-icon {
+  font-size: 40px;
+  margin-bottom: 8px;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+}
+
+.furniture-item-name {
+  font-size: 12px;
+  color: #ddd;
+  font-weight: 500;
+  text-align: center;
+  line-height: 1.3;
+}
+
+.furniture-item-quantity {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  background: #4a90e2;
+  color: white;
+  font-size: 11px;
+  font-weight: bold;
+  padding: 3px 7px;
+  border-radius: 8px;
+  border: 1px solid #6bb3ff;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+}
+
+/* Inventaire vide */
+.inventory-empty {
+  text-align: center;
+  padding: 80px 20px;
+  color: #999;
+}
+
+.empty-icon {
+  font-size: 60px;
+  margin-bottom: 20px;
+  opacity: 0.5;
+}
+
+.inventory-empty p {
+  font-size: 18px;
+  color: #bbb;
+  margin-bottom: 10px;
+  font-weight: 500;
+}
+
+.inventory-empty small {
+  font-size: 14px;
+  color: #888;
+}
+
+/* Pied de page */
+.inventory-footer {
+  background: #2a2a2a;
+  padding: 12px 20px;
+  border-top: 2px solid #444;
+}
+
+.inventory-info {
+  color: #aaa;
+  font-size: 13px;
+  text-align: center;
+}
+
+/* Scrollbar personnalisée */
+.inventory-content::-webkit-scrollbar {
+  width: 10px;
+}
+
+.inventory-content::-webkit-scrollbar-track {
+  background: #2a2a2a;
+  border-radius: 5px;
+}
+
+.inventory-content::-webkit-scrollbar-thumb {
+  background: #555;
+  border-radius: 5px;
+  border: 2px solid #2a2a2a;
+}
+
+.inventory-content::-webkit-scrollbar-thumb:hover {
+  background: #666;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .inventory-panel {
+    width: 95vw;
+    height: 400px;
+    bottom: 70px;
+  }
+
+  .furniture-grid {
+    grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+    gap: 10px;
+  }
+
+  .furniture-item {
+    min-height: 90px;
+    padding: 10px;
+  }
+
+  .furniture-item-icon {
+    font-size: 32px;
+  }
+
+  .furniture-item-name {
+    font-size: 11px;
+  }
+
+  .habbo-toolbar {
+    bottom: 5px;
+    padding: 5px;
+  }
+
+  .toolbar-button {
+    width: 45px;
+    height: 45px;
+  }
+
+  .toolbar-icon {
+    font-size: 24px;
+  }
+}
