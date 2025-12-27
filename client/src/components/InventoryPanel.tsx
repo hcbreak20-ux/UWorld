@@ -12,7 +12,15 @@ interface FurnitureItem {
   quantity: number;
 }
 
-export const InventoryPanel: React.FC = () => {
+interface InventoryPanelProps {
+  showRoomList: boolean;
+  onToggleRoomList: () => void;
+}
+
+export const InventoryPanel: React.FC<InventoryPanelProps> = ({ 
+  showRoomList, 
+  onToggleRoomList 
+}) => {
   const [isOpen, setIsOpen] = useState(false);
   const [showQuests, setShowQuests] = useState(false);
   const [questsToClaimCount, setQuestsToClaimCount] = useState(3);
@@ -137,15 +145,21 @@ export const InventoryPanel: React.FC = () => {
           </div>
         </div>
 
-        {/* Autres boutons (désactivés pour l'instant) */}
+        {/* Bouton Catalogue */}
         <div className="toolbar-button disabled" title="Catalogue (bientôt)">
           <div className="toolbar-icon">🏪</div>
         </div>
         
-        <div className="toolbar-button disabled" title="Navigateur (bientôt)">
+        {/* Bouton Navigateur/Salles */}
+        <div 
+          className={`toolbar-button ${showRoomList ? 'active' : ''}`}
+          onClick={onToggleRoomList}
+          title="Salles"
+        >
           <div className="toolbar-icon">🗺️</div>
         </div>
         
+        {/* Bouton Amis */}
         <div className="toolbar-button disabled" title="Amis (bientôt)">
           <div className="toolbar-icon">👥</div>
         </div>

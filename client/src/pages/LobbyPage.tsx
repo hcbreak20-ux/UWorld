@@ -99,9 +99,20 @@ export const LobbyPage: React.FC = () => {
       <div className="lobby-header">
         <h1>🏨 UWorld</h1>
         <div className="header-actions">
-          <button onClick={() => setShowRoomList(!showRoomList)}>
-            📋 Salles
-          </button>
+          {/* uCoins */}
+          <div className="header-currency">
+            <span className="currency-icon">🪙</span>
+            <span className="currency-amount">{user?.coins.toLocaleString() || 0}</span>
+            <span className="currency-label">uCoins</span>
+          </div>
+          
+          {/* uNuggets */}
+          <div className="header-currency">
+            <span className="currency-icon">🥇</span>
+            <span className="currency-amount">{user?.gems.toLocaleString() || 0}</span>
+            <span className="currency-label">uNuggets</span>
+          </div>
+          
           <button onClick={handleLogout}>🚪 Déconnexion</button>
         </div>
       </div>
@@ -123,12 +134,14 @@ export const LobbyPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Inventaire */}
-      <InventoryPanel />
+      {/* Inventaire avec bouton Salles */}
+      <InventoryPanel 
+        showRoomList={showRoomList}
+        onToggleRoomList={() => setShowRoomList(!showRoomList)}
+      />
 
       {/* Barre d'expérience */}
       <ExperienceBar />
-
     </div>
   );
 };
