@@ -1,14 +1,37 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useStore } from '@/store';
 import { Link } from 'react-router-dom';
+import { api } from '@/services/api';
 import './ProfilePanel.css';
 
 interface ProfilePanelProps {
   onClose: () => void;
 }
 
+interface LevelProgress {
+  level: number;
+  currentXp: number;
+  xpForNextLevel: number;
+  progressPercentage: number;
+  totalXp: number;
+}
+
 export const ProfilePanel: React.FC<ProfilePanelProps> = ({ onClose }) => {
   const { user } = useStore();
+  const [xpProgress, setXpProgress] = useState<LevelProgress | null>(null);
+
+  useEffect(() => {
+    const fetchXpProgress = async () => {
+      try {
+        const response = await api.get('/level/progress');
+        setXpProgress(response.data);
+      } catch (error) {
+        console.error('Erreur chargement XP:', error);
+      }
+    };
+
+    fetchXpProgress();
+  }, []);
 
   if (!user) return null;
 
@@ -62,7 +85,9 @@ export const ProfilePanel: React.FC<ProfilePanelProps> = ({ onClose }) => {
               <div className="stat-icon">⭐</div>
               <div className="stat-info">
                 <span className="stat-label">XP</span>
-                <span className="stat-value">{user.experience.toLocaleString()}</span>
+                <span className="stat-value">
+                  {xpProgress ? `${xpProgress.currentXp}/${xpProgress.xpForNextLevel}` : `${user.experience}`}
+                </span>
               </div>
             </div>
           </div>

@@ -1,48 +1,47 @@
 .experience-bar-container {
   position: fixed;
-  bottom: 95px; /* Juste au-dessus du menu */
+  bottom: 95px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 40;
   pointer-events: none;
-  max-width: 1400px; /* Même largeur max que le canvas */
-  width: calc(100% - 700px); /* Soustraire largeur panels gauche + droite */
 }
 
 .experience-bar-wrapper {
-  background: linear-gradient(90deg, rgba(57, 57, 58, 0.9) 0%, rgba(3, 3, 3, 0.9) 100%);
+  background: linear-gradient(90deg, rgba(67, 56, 202, 0.9) 0%, rgba(109, 40, 217, 0.9) 100%);
   backdrop-filter: blur(10px);
   border-radius: 16px;
-  padding: 12px 24px;
+  padding: 10px 20px; /* Réduit de 12px à 10px */
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
   border: 1px solid rgba(99, 102, 241, 0.3);
   display: flex;
   align-items: center;
   gap: 16px;
-  min-width: 450px;
+  min-width: 420px; /* Réduit de 450px à 420px */
+  max-width: 420px; /* Limite la largeur */
 }
 
 .experience-bar-level {
   background: linear-gradient(135deg, #fbbf24 0%, #f97316 100%);
   color: white;
   font-weight: bold;
-  padding: 6px 12px;
+  padding: 5px 12px; /* Réduit de 6px à 5px */
   border-radius: 8px;
-  font-size: 0.875rem;
+  font-size: 0.85rem; /* Réduit de 0.875rem */
   box-shadow: 0 4px 12px rgba(251, 191, 36, 0.4);
   white-space: nowrap;
 }
 
 .experience-bar-progress-container {
   flex: 1;
-  min-width: 250px;
+  min-width: 220px; /* Réduit de 250px */
 }
 
 .experience-bar-track {
   position: relative;
-  height: 24px;
+  height: 20px; /* Réduit de 24px à 20px */
   background: rgba(31, 41, 55, 0.5);
-  border-radius: 12px;
+  border-radius: 10px; /* Ajusté proportionnellement */
   overflow: hidden;
   border: 1px solid rgba(99, 102, 241, 0.2);
 }
@@ -92,7 +91,7 @@
   justify-content: center;
   color: white;
   font-weight: 600;
-  font-size: 0.875rem;
+  font-size: 0.8rem; /* Réduit de 0.875rem */
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
   z-index: 10;
 }
@@ -100,6 +99,6 @@
 .experience-bar-percentage {
   color: white;
   font-weight: bold;
-  font-size: 0.875rem;
+  font-size: 0.8rem; /* Réduit de 0.875rem */
   white-space: nowrap;
 }
