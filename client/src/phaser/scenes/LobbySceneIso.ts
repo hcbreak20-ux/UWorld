@@ -39,17 +39,24 @@ export class LobbySceneIso extends Phaser.Scene {
     const tileTypes = [
       'wooden', 'checkered_gray', 'checkered_blue', 'checkered_green',
       'marble', 'carpet_red', 'carpet_blue', 'carpet_purple', 'carpet_gold',
-      'grass', 'water', 'stone', 'grass_mod', 'brick'
+      'grass', 'water', 'stone', 'grass_mod', 'brick'  // ← AJOUTÉ brick!
     ];
     
     tileTypes.forEach(type => {
-      this.load.image(`floor_${type}`, `/assets/habbo-iso/floor_${type}.png`);
+      this.load.image(`floor_${type}`, `/assets/habbo-tiles/floor_${type}.png`);
     });
 
-    // ✅ NOUVEAU: Charger le sprite 8 directions
-    this.load.spritesheet('character_8dir', '/assets/habbo-iso/uworld-character-8dir.png', {
-      frameWidth: 32,
-      frameHeight: 48
+    // Charger les personnages isométriques (4 directions × 4 couleurs)
+    const directions = ['se', 'sw', 'ne', 'nw'];
+    const colors = ['blue', 'green', 'red', 'yellow'];
+    
+    directions.forEach(dir => {
+      colors.forEach(color => {
+        this.load.image(
+          `char_${color}_${dir}`,
+          `/assets/habbo-iso/character_${color}_${dir}.png`
+        );
+      });
     });
 
     // Charger les murs
@@ -70,9 +77,6 @@ export class LobbySceneIso extends Phaser.Scene {
     // Créer le groupe pour les objets
     this.gameObjects = this.add.group();
     
-    // ✅ NOUVEAU: Créer les animations 8 directions
-    this.createCharacterAnimations();
-    
     // Créer la salle isométrique
     this.createIsoRoom();
     
@@ -81,11 +85,10 @@ export class LobbySceneIso extends Phaser.Scene {
     
     // Créer le joueur principal
     const isoPos = this.cartToIso(this.currentPosition.x, this.currentPosition.y);
-    this.player = this.add.sprite(isoPos.x, isoPos.y, 'character_8dir', 0); // ✅ Utilise le nouveau sprite
-    this.player.setDepth(1000);
+    this.player = this.add.sprite(isoPos.x, isoPos.y, 'char_blue_se');
+    this.player.setDepth(1000); // Depth élevé pour être toujours au-dessus
     this.player.setData('gridX', this.currentPosition.x);
     this.player.setData('gridY', this.currentPosition.y);
-    this.player.setData('color', 'blue'); // Pour compatibilité
     
     // Rendre le sprite du joueur principal cliquable pour afficher son profil
     this.player.setInteractive({ cursor: 'pointer' });
@@ -110,51 +113,55 @@ export class LobbySceneIso extends Phaser.Scene {
       padding: { x: 6, y: 3 },
     });
     this.playerNameText.setOrigin(0.5, 1);
-    this.playerNameText.setDepth(1001);
-    this.playerNameText.setVisible(false);
+    this.playerNameText.setDepth(1001); // Au-dessus du personnage
+    this.playerNameText.setVisible(false); // ← CACHÉ!
 
-    // Configurer la caméra
-    this.cameras.main.setZoom(1);
-    this.cameras.main.centerOn(isoPos.x, isoPos.y);
+    // **NOUVEAU: Configurer la caméra**
+    this.cameras.main.setZoom(1); // Zoom initial
+    this.cameras.main.centerOn(isoPos.x, isoPos.y); // Centrer sur le personnage
 
-    // Contrôles de zoom avec la molette
+    // **NOUVEAU: Contrôles de zoom avec la molette**
     this.input.on('wheel', (pointer: any, gameObjects: any, deltaX: number, deltaY: number) => {
       const currentZoom = this.cameras.main.zoom;
       const zoomAmount = deltaY > 0 ? -0.1 : 0.1;
-      const newZoom = Phaser.Math.Clamp(currentZoom + zoomAmount, 0.5, 2.5);
+      const newZoom = Phaser.Math.Clamp(currentZoom + zoomAmount, 0.5, 2.5); // Min 0.5, Max 2.5
       
       this.cameras.main.setZoom(newZoom);
     });
 
-    // Configurer les contrôles CLAVIER
+    // Configurer les contrôles CLAVIER (optionnel - garde les flèches)
     this.cursors = this.input.keyboard!.createCursorKeys();
 
     // Touches pour système de meubles
     this.rKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.R);
     this.escKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
 
-    // Désactiver la capture des touches pour permettre le chat
+    // IMPORTANT: Désactiver la capture des touches pour permettre le chat
     this.input.keyboard!.removeCapture(Phaser.Input.Keyboard.KeyCodes.SPACE);
     this.input.keyboard!.removeCapture(Phaser.Input.Keyboard.KeyCodes.R);
 
-    // Variable pour gérer le double-clic
+    // **Variable pour gérer le double-clic**
     let lastClickTime = 0;
-    const doubleClickDelay = 300;
+    const doubleClickDelay = 300; // ms
 
-    // Configurer le clic souris
+    // **Configurer le clic souris pour déplacement OU placement**
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
       if (!this.isMoving) {
         const placementMode = useStore.getState().placementMode;
         
         if (placementMode.active) {
+          // Mode placement: placer le meuble
           this.placeFurniture(pointer.worldX, pointer.worldY);
         } else {
+          // Mode normal: double-clic pour se déplacer
           const currentTime = Date.now();
           const timeSinceLastClick = currentTime - lastClickTime;
           
           if (timeSinceLastClick < doubleClickDelay) {
+            // Double-clic détecté: se déplacer
             this.handleMouseClick(pointer.worldX, pointer.worldY);
           }
+          // Sinon, c'est un simple clic (ne fait rien, les meubles gèrent leurs propres clics)
           
           lastClickTime = currentTime;
         }
@@ -170,6 +177,7 @@ export class LobbySceneIso extends Phaser.Scene {
       socketService.joinRoom(roomId, (data) => {
         console.log('Salle rejointe (ISO):', data);
         
+        // Créer les sprites pour les autres joueurs
         Object.entries(data.players).forEach(([userId, player]) => {
           if (userId !== store.user?.id) {
             this.createPlayerSprite(userId, player);
@@ -180,44 +188,23 @@ export class LobbySceneIso extends Phaser.Scene {
   }
 
   /**
-   * ✅ NOUVEAU: Créer les animations pour les 8 directions
-   */
-  private createCharacterAnimations() {
-    const directions = ['se', 's', 'sw', 'w', 'nw', 'n', 'ne', 'e'];
-    
-    directions.forEach((dir, index) => {
-      // Animation de marche (3 frames)
-      this.anims.create({
-        key: `walk_${dir}`,
-        frames: this.anims.generateFrameNumbers('character_8dir', {
-          start: index * 3,
-          end: index * 3 + 2
-        }),
-        frameRate: 8,
-        repeat: -1
-      });
-      
-      // Animation idle (frame 0)
-      this.anims.create({
-        key: `idle_${dir}`,
-        frames: [{ key: 'character_8dir', frame: index * 3 }],
-        frameRate: 1
-      });
-    });
-  }
-
-  /**
    * Gérer le clic de souris pour déplacement
    */
   private handleMouseClick(screenX: number, screenY: number) {
+    // Convertir les coordonnées écran vers grille iso
     const gridPos = this.screenToGrid(screenX, screenY);
     
     if (this.isValidPosition({ x: gridPos.x, y: gridPos.y, direction: 'down' })) {
+      // Calculer la direction
       const dx = gridPos.x - this.currentPosition.x;
       const dy = gridPos.y - this.currentPosition.y;
       
-      // ✅ NOUVEAU: Calculer la direction en 8 directions
-      const direction = this.getDirection8(dx, dy);
+      let direction = 'down';
+      if (Math.abs(dx) > Math.abs(dy)) {
+        direction = dx > 0 ? 'right' : 'left';
+      } else {
+        direction = dy > 0 ? 'down' : 'up';
+      }
       
       const newPosition = {
         x: gridPos.x,
@@ -233,12 +220,14 @@ export class LobbySceneIso extends Phaser.Scene {
    * Convertir coordonnées écran vers grille
    */
   private screenToGrid(screenX: number, screenY: number): { x: number; y: number } {
+    // Ajuster pour le décalage de la caméra
     const offsetX = 400;
     const offsetY = 100;
     
     const relX = screenX - offsetX;
     const relY = screenY - offsetY;
     
+    // Formules inverses de cartToIso
     const gridX = Math.round((relX / (ISO_TILE_WIDTH / 2) + relY / (ISO_TILE_HEIGHT / 2)) / 2);
     const gridY = Math.round((relY / (ISO_TILE_HEIGHT / 2) - relX / (ISO_TILE_WIDTH / 2)) / 2);
     
@@ -248,325 +237,809 @@ export class LobbySceneIso extends Phaser.Scene {
   update() {
     if (!this.player || this.isMoving) return;
 
+    // IMPORTANT: Ne pas traiter les touches si le chat est actif
     const { chatInputFocused } = useStore.getState();
     
     if (chatInputFocused) {
-      return;
+      return; // Ignorer toutes les touches du jeu
     }
 
+    // Vérifier si mode placement actif
     this.checkPlacementMode();
 
+    // Annuler placement avec ESC
     if (Phaser.Input.Keyboard.JustDown(this.escKey)) {
       const { setPlacementMode } = useStore.getState();
       setPlacementMode(false);
-      
       if (this.placementGhost) {
         this.placementGhost.destroy();
         this.placementGhost = null;
       }
-      return;
     }
 
-    if (Phaser.Input.Keyboard.JustDown(this.rKey) && this.placementGhost) {
-      this.placementRotation = (this.placementRotation + 90) % 360;
-      this.placementGhost.setAngle(this.placementRotation);
+    const newPosition = { ...this.currentPosition };
+    let moved = false;
+    let newDir = this.currentPosition.direction;
+
+    // Conversion des directions vers iso
+    if (this.cursors.left.isDown) {
+      newPosition.x -= 1;
+      newDir = 'left';
+      moved = true;
+    } else if (this.cursors.right.isDown) {
+      newPosition.x += 1;
+      newDir = 'right';
+      moved = true;
+    } else if (this.cursors.up.isDown) {
+      newPosition.y -= 1;
+      newDir = 'up';
+      moved = true;
+    } else if (this.cursors.down.isDown) {
+      newPosition.y += 1;
+      newDir = 'down';
+      moved = true;
     }
 
-    // ✅ MODIFIÉ: Déplacement avec les flèches en 8 directions
-    let velocityX = 0;
-    let velocityY = 0;
+    if (moved && this.isValidPosition(newPosition)) {
+      newPosition.direction = newDir;
+      this.movePlayer(newPosition);
+    }
+  }
 
-    if (this.cursors.left.isDown) velocityX = -1;
-    if (this.cursors.right.isDown) velocityX = 1;
-    if (this.cursors.up.isDown) velocityY = -1;
-    if (this.cursors.down.isDown) velocityY = 1;
+  /**
+   * Vérifier et gérer le mode placement
+   */
+  private checkPlacementMode() {
+    const { placementMode } = useStore.getState();
 
-    if (velocityX !== 0 || velocityY !== 0) {
-      // ✅ NOUVEAU: Calculer la direction en 8 directions
-      const direction = this.getDirection8(velocityX, velocityY);
+    if (placementMode.active && !this.placementGhost && placementMode.furnitureType) {
+      this.createPlacementGhost(placementMode.furnitureType);
+    }
+
+    if (!placementMode.active && this.placementGhost) {
+      this.placementGhost.destroy();
+      this.placementGhost = null;
+      this.placementRotation = 0;
+    }
+
+    // Mettre à jour la position du fantôme
+    if (this.placementGhost && this.input.activePointer) {
+      const pointer = this.input.activePointer;
+      const gridPos = this.screenToGrid(pointer.worldX, pointer.worldY);
       
-      const newPosition = {
-        x: this.currentPosition.x + velocityX,
-        y: this.currentPosition.y + velocityY,
-        direction: direction
-      };
-
-      if (this.isValidPosition(newPosition)) {
-        this.movePlayer(newPosition);
+      if (this.isValidPosition({ x: gridPos.x, y: gridPos.y, direction: 'down' })) {
+        const isoPos = this.cartToIso(gridPos.x, gridPos.y);
+        this.placementGhost.setPosition(isoPos.x, isoPos.y - 20);
       }
     }
   }
 
   /**
-   * ✅ NOUVEAU: Calculer la direction en 8 directions à partir d'un vecteur
+   * Créer l'aperçu fantôme pour placement
    */
-  private getDirection8(dx: number, dy: number): string {
-    // Normaliser le vecteur
-    const angle = Math.atan2(dy, dx);
-    const degrees = angle * (180 / Math.PI);
-    
-    // Normaliser entre 0-360
-    const normalized = (degrees + 360) % 360;
-    
-    // Diviser en 8 sections de 45°
-    // 0° = Est (droite)
-    // 45° = Sud-Est
-    // 90° = Sud (bas)
-    // 135° = Sud-Ouest
-    // 180° = Ouest (gauche)
-    // 225° = Nord-Ouest
-    // 270° = Nord (haut)
-    // 315° = Nord-Est
-    
-    if (normalized >= 337.5 || normalized < 22.5) return 'right';  // E
-    if (normalized >= 22.5 && normalized < 67.5) return 'down';     // SE (diagonale)
-    if (normalized >= 67.5 && normalized < 112.5) return 'down';    // S
-    if (normalized >= 112.5 && normalized < 157.5) return 'down';   // SW (diagonale)
-    if (normalized >= 157.5 && normalized < 202.5) return 'left';   // W
-    if (normalized >= 202.5 && normalized < 247.5) return 'up';     // NW (diagonale)
-    if (normalized >= 247.5 && normalized < 292.5) return 'up';     // N
-    return 'up';  // NE (diagonale)
+  private createPlacementGhost(furnitureType: string) {
+    const pointer = this.input.activePointer;
+    const gridPos = this.screenToGrid(pointer.worldX, pointer.worldY);
+    const isoPos = this.cartToIso(gridPos.x, gridPos.y);
+
+    this.placementGhost = this.add.image(isoPos.x, isoPos.y - 20, furnitureType);
+    this.placementGhost.setDepth(999);
+    this.placementGhost.setAlpha(0.6);
+    this.placementGhost.setTint(0x4a90e2);
+    this.placementGhost.setRotation((this.placementRotation * Math.PI) / 180);
   }
 
   /**
-   * ✅ MODIFIÉ: Mapper les directions 4 → 8
+   * Afficher le profil d'un joueur
+   */
+  private showPlayerProfile(userId: string, username: string, level: number, screenX: number, screenY: number) {
+    console.log('Afficher profil:', username);
+    
+    // Fermer le profil existant
+    this.closePlayerProfile();
+
+    // Créer l'overlay
+    const overlay = document.createElement('div');
+    overlay.id = 'player-profile-overlay';
+    overlay.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.3);
+      z-index: 9999;
+      backdrop-filter: blur(2px);
+    `;
+    document.body.appendChild(overlay);
+
+    // Créer le menu de profil
+    const profileDiv = document.createElement('div');
+    profileDiv.id = 'player-profile';
+    profileDiv.style.cssText = `
+      position: fixed;
+      left: ${screenX + 20}px;
+      top: ${screenY}px;
+      background: rgba(30, 30, 35, 0.98);
+      border: 2px solid rgba(102, 126, 234, 0.4);
+      border-radius: 16px;
+      padding: 16px;
+      min-width: 200px;
+      z-index: 10000;
+      box-shadow: 0 12px 48px rgba(0, 0, 0, 0.6);
+      animation: menuSlideIn 0.25s ease-out;
+      font-family: 'Arial', sans-serif;
+    `;
+
+    // Bouton X
+    const closeBtn = document.createElement('button');
+    closeBtn.textContent = '✕';
+    closeBtn.style.cssText = `
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 24px;
+      height: 24px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 6px;
+      color: white;
+      font-size: 14px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      line-height: 1;
+    `;
+    closeBtn.onclick = (e) => {
+      e.stopPropagation();
+      this.closePlayerProfile();
+    };
+    closeBtn.onmouseenter = () => {
+      closeBtn.style.background = 'rgba(255, 60, 60, 0.8)';
+      closeBtn.style.transform = 'scale(1.1)';
+    };
+    closeBtn.onmouseleave = () => {
+      closeBtn.style.background = 'rgba(255, 255, 255, 0.1)';
+      closeBtn.style.transform = 'scale(1)';
+    };
+    profileDiv.appendChild(closeBtn);
+
+    // Avatar (emoji)
+    const avatar = document.createElement('div');
+    avatar.textContent = '👤';
+    avatar.style.cssText = `
+      font-size: 48px;
+      text-align: center;
+      margin-bottom: 12px;
+    `;
+    profileDiv.appendChild(avatar);
+
+    // Nom d'utilisateur
+    const nameDiv = document.createElement('div');
+    nameDiv.textContent = username;
+    nameDiv.style.cssText = `
+      color: #FFD700;
+      font-size: 18px;
+      font-weight: 600;
+      text-align: center;
+      margin-bottom: 8px;
+    `;
+    profileDiv.appendChild(nameDiv);
+
+    // Niveau
+    const levelDiv = document.createElement('div');
+    levelDiv.innerHTML = `<span style="color: rgba(255, 255, 255, 0.7);">Niveau:</span> <span style="color: #667eea; font-weight: 600;">${level}</span>`;
+    levelDiv.style.cssText = `
+      font-size: 14px;
+      text-align: center;
+      margin-bottom: 16px;
+    `;
+    profileDiv.appendChild(levelDiv);
+
+    // Ligne de séparation
+    const separator = document.createElement('div');
+    separator.style.cssText = `
+      height: 1px;
+      background: rgba(255, 255, 255, 0.1);
+      margin: 12px 0;
+    `;
+    profileDiv.appendChild(separator);
+
+    // Bouton Envoyer Message (futur)
+    const messageBtn = document.createElement('button');
+    messageBtn.innerHTML = `💬 Envoyer message`;
+    messageBtn.style.cssText = `
+      width: 100%;
+      padding: 10px 14px;
+      margin: 4px 0;
+      background: rgba(74, 144, 226, 0.2);
+      border: 1px solid rgba(74, 144, 226, 0.4);
+      border-radius: 10px;
+      color: white;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    `;
+    messageBtn.onclick = () => {
+      alert('Fonctionnalité à venir!');
+    };
+    messageBtn.onmouseenter = () => {
+      messageBtn.style.background = 'rgba(74, 144, 226, 0.35)';
+      messageBtn.style.transform = 'translateX(3px)';
+    };
+    messageBtn.onmouseleave = () => {
+      messageBtn.style.background = 'rgba(74, 144, 226, 0.2)';
+      messageBtn.style.transform = 'translateX(0)';
+    };
+    profileDiv.appendChild(messageBtn);
+
+    document.body.appendChild(profileDiv);
+
+    // Fermer en cliquant sur l'overlay
+    setTimeout(() => {
+      overlay.addEventListener('click', () => {
+        this.closePlayerProfile();
+      });
+    }, 100);
+  }
+
+  private closePlayerProfile() {
+    const profile = document.getElementById('player-profile');
+    const overlay = document.getElementById('player-profile-overlay');
+    if (profile) profile.remove();
+    if (overlay) overlay.remove();
+  }
+
+  /**
+   * Afficher le menu contextuel pour un meuble
+   */
+  private showFurnitureMenu(furnitureId: string, screenX: number, screenY: number) {
+    console.log('showFurnitureMenu appelé:', furnitureId, 'Position pointer:', screenX, screenY);
+    
+    // Fermer le menu existant s'il y en a un
+    this.closeFurnitureMenu();
+
+    // Récupérer les infos du meuble
+    const { placedFurniture } = useStore.getState();
+    const furniture = placedFurniture.find(f => f.id === furnitureId);
+    if (!furniture) {
+      console.log('Meuble non trouvé dans le store:', furnitureId);
+      return;
+    }
+
+    console.log('Meuble trouvé:', furniture);
+
+    // Calculer la vraie position dans la fenêtre (pas relative au canvas)
+    // screenX et screenY de Phaser sont déjà relatifs à la fenêtre
+    const menuX = screenX + 20;
+    const menuY = screenY;
+    
+    console.log('Position menu calculée:', menuX, menuY);
+
+    // Ajouter les animations CSS si elles n'existent pas déjà
+    if (!document.getElementById('furniture-menu-style')) {
+      const style = document.createElement('style');
+      style.id = 'furniture-menu-style';
+      style.textContent = `
+        @keyframes menuSlideIn {
+          from {
+            opacity: 0;
+            transform: translateY(-10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        .furniture-menu-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.3);
+          z-index: 9999;
+          backdrop-filter: blur(2px);
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
+    // Créer l'overlay semi-transparent
+    const overlay = document.createElement('div');
+    overlay.className = 'furniture-menu-overlay';
+    overlay.id = 'furniture-menu-overlay';
+    document.body.appendChild(overlay);
+    console.log('Overlay ajouté');
+
+    // Créer le conteneur du menu
+    const menuDiv = document.createElement('div');
+    menuDiv.id = 'furniture-menu';
+    menuDiv.style.cssText = `
+      position: fixed;
+      left: ${menuX}px;
+      top: ${menuY}px;
+      background: rgba(30, 30, 35, 0.98);
+      border: 2px solid rgba(102, 126, 234, 0.4);
+      border-radius: 16px;
+      padding: 12px;
+      min-width: 180px;
+      z-index: 10000;
+      box-shadow: 0 12px 48px rgba(0, 0, 0, 0.6);
+      animation: menuSlideIn 0.25s ease-out;
+      font-family: 'Arial', sans-serif;
+    `;
+
+    console.log('Menu créé avec position:', menuX, menuY);
+    console.log('MenuDiv style:', menuDiv.style.cssText);
+
+    // Bouton X pour fermer le menu
+    const closeBtn = document.createElement('button');
+    closeBtn.textContent = '✕';
+    closeBtn.style.cssText = `
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 24px;
+      height: 24px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 6px;
+      color: white;
+      font-size: 14px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      line-height: 1;
+    `;
+    closeBtn.onclick = (e) => {
+      e.stopPropagation();
+      this.closeFurnitureMenu();
+    };
+    closeBtn.onmouseenter = () => {
+      closeBtn.style.background = 'rgba(255, 60, 60, 0.8)';
+      closeBtn.style.borderColor = 'rgba(255, 60, 60, 1)';
+      closeBtn.style.transform = 'scale(1.1)';
+    };
+    closeBtn.onmouseleave = () => {
+      closeBtn.style.background = 'rgba(255, 255, 255, 0.1)';
+      closeBtn.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+      closeBtn.style.transform = 'scale(1)';
+    };
+    menuDiv.appendChild(closeBtn);
+
+    // Section de l'image du meuble
+    const imageSection = document.createElement('div');
+    imageSection.style.cssText = `
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 10px;
+      margin-bottom: 12px;
+    `;
+
+    // Icône du meuble
+    const furnitureIcon = document.createElement('div');
+    furnitureIcon.textContent = furniture.icon;
+    furnitureIcon.style.cssText = `
+      font-size: 32px;
+      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+    `;
+    imageSection.appendChild(furnitureIcon);
+
+    // Info du meuble
+    const infoDiv = document.createElement('div');
+    infoDiv.style.cssText = `
+      flex: 1;
+    `;
+
+    const nameDiv = document.createElement('div');
+    nameDiv.textContent = furniture.name;
+    nameDiv.style.cssText = `
+      color: white;
+      font-weight: 600;
+      font-size: 13px;
+      margin-bottom: 2px;
+    `;
+    infoDiv.appendChild(nameDiv);
+
+    const rotationDiv = document.createElement('div');
+    rotationDiv.id = 'furniture-rotation-display';
+    rotationDiv.textContent = `${furniture.rotation}°`;
+    rotationDiv.style.cssText = `
+      color: #667eea;
+      font-size: 11px;
+      font-weight: 500;
+    `;
+    infoDiv.appendChild(rotationDiv);
+
+    imageSection.appendChild(infoDiv);
+    menuDiv.appendChild(imageSection);
+
+    // Bouton Rotate
+    const rotateBtn = document.createElement('button');
+    rotateBtn.innerHTML = `
+      <span style="font-size: 16px;">🔄</span>
+      <span>Rotate</span>
+    `;
+    rotateBtn.style.cssText = `
+      width: 100%;
+      padding: 10px 14px;
+      margin: 4px 0;
+      background: rgba(74, 144, 226, 0.2);
+      border: 1px solid rgba(74, 144, 226, 0.4);
+      border-radius: 10px;
+      color: white;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      justify-content: center;
+    `;
+    rotateBtn.onclick = (e) => {
+      e.stopPropagation(); // Ne pas fermer le menu
+      this.rotateFurniture(furnitureId);
+      // Mettre à jour l'affichage de la rotation
+      const rotDisplay = document.getElementById('furniture-rotation-display');
+      if (rotDisplay) {
+        const newFurniture = useStore.getState().placedFurniture.find(f => f.id === furnitureId);
+        if (newFurniture) {
+          rotDisplay.textContent = `${newFurniture.rotation}°`;
+        }
+      }
+    };
+    rotateBtn.onmouseenter = () => {
+      rotateBtn.style.background = 'rgba(74, 144, 226, 0.35)';
+      rotateBtn.style.borderColor = 'rgba(74, 144, 226, 0.6)';
+      rotateBtn.style.transform = 'translateX(3px)';
+    };
+    rotateBtn.onmouseleave = () => {
+      rotateBtn.style.background = 'rgba(74, 144, 226, 0.2)';
+      rotateBtn.style.borderColor = 'rgba(74, 144, 226, 0.4)';
+      rotateBtn.style.transform = 'translateX(0)';
+    };
+    menuDiv.appendChild(rotateBtn);
+
+    // Bouton Pick up
+    const pickupBtn = document.createElement('button');
+    pickupBtn.innerHTML = `
+      <span style="font-size: 16px;">🎒</span>
+      <span>Pick up</span>
+    `;
+    pickupBtn.style.cssText = `
+      width: 100%;
+      padding: 10px 14px;
+      margin: 4px 0;
+      background: rgba(243, 156, 18, 0.2);
+      border: 1px solid rgba(243, 156, 18, 0.4);
+      border-radius: 10px;
+      color: white;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      justify-content: center;
+    `;
+    pickupBtn.onclick = () => {
+      this.pickUpFurniture(furnitureId);
+      this.closeFurnitureMenu();
+    };
+    pickupBtn.onmouseenter = () => {
+      pickupBtn.style.background = 'rgba(243, 156, 18, 0.35)';
+      pickupBtn.style.borderColor = 'rgba(243, 156, 18, 0.6)';
+      pickupBtn.style.transform = 'translateX(3px)';
+    };
+    pickupBtn.onmouseleave = () => {
+      pickupBtn.style.background = 'rgba(243, 156, 18, 0.2)';
+      pickupBtn.style.borderColor = 'rgba(243, 156, 18, 0.4)';
+      pickupBtn.style.transform = 'translateX(0)';
+    };
+    menuDiv.appendChild(pickupBtn);
+
+    document.body.appendChild(menuDiv);
+    console.log('Menu ajouté au DOM, élément:', document.getElementById('furniture-menu'));
+
+    // Fermer le menu si on clique sur l'overlay
+    setTimeout(() => {
+      overlay.addEventListener('click', () => {
+        this.closeFurnitureMenu();
+      });
+    }, 100);
+  }
+
+  private closeFurnitureMenu() {
+    const menu = document.getElementById('furniture-menu');
+    const overlay = document.getElementById('furniture-menu-overlay');
+    if (menu) menu.remove();
+    if (overlay) overlay.remove();
+  }
+
+  /**
+   * Faire pivoter un meuble placé
+   */
+  private rotateFurniture(furnitureId: string) {
+    const { updateFurnitureRotation, placedFurniture } = useStore.getState();
+    
+    // Trouver le meuble
+    const furniture = placedFurniture.find(f => f.id === furnitureId);
+    if (!furniture) return;
+
+    // Calculer la nouvelle rotation
+    const newRotation = (furniture.rotation + 90) % 360;
+
+    // Mettre à jour dans le store
+    updateFurnitureRotation(furnitureId, newRotation);
+
+    // Mettre à jour le sprite
+    const sprite = this.placedFurnitureSprites.get(furnitureId);
+    if (sprite) {
+      sprite.setRotation((newRotation * Math.PI) / 180);
+    }
+
+    // ✅ NOUVEAU: Émettre au serveur pour tracking des quêtes
+    socketService.socket?.emit('rotateFurniture', {
+      furnitureId: furnitureId,
+      rotation: newRotation
+    });
+
+    console.log('Meuble pivoté:', furnitureId, newRotation + '°');
+  }
+
+  /**
+   * Placer le meuble dans la salle
+   */
+  private placeFurniture(worldX: number, worldY: number) {
+    const { placementMode, setPlacementMode, addPlacedFurniture } = useStore.getState();
+    
+    if (!placementMode.active || !placementMode.furnitureType) return;
+
+    const gridPos = this.screenToGrid(worldX, worldY);
+    
+    if (!this.isValidPosition({ x: gridPos.x, y: gridPos.y, direction: 'down' })) {
+      console.log('Position invalide!');
+      return;
+    }
+
+    // Créer l'objet meuble placé
+    const furnitureId = `furniture_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const placedFurniture = {
+      id: furnitureId,
+      furnitureType: placementMode.furnitureType,
+      name: placementMode.furnitureName || 'Meuble',
+      icon: placementMode.furnitureIcon || '🪑',
+      x: gridPos.x,
+      y: gridPos.y,
+      rotation: this.placementRotation,
+    };
+
+    // Ajouter au store
+    addPlacedFurniture(placedFurniture);
+
+    // ✅ NOUVEAU: Émettre au serveur pour tracking des quêtes
+    socketService.socket?.emit('placeFurniture', {
+      furnitureId: furnitureId,
+      x: gridPos.x,
+      y: gridPos.y,
+      rotation: this.placementRotation
+    });
+
+    // Créer le sprite du meuble
+    const isoPos = this.cartToIso(gridPos.x, gridPos.y);
+    const furnitureSprite = this.add.image(isoPos.x, isoPos.y - 20, placementMode.furnitureType);
+    furnitureSprite.setDepth(500);
+    furnitureSprite.setRotation((this.placementRotation * Math.PI) / 180);
+    furnitureSprite.setInteractive({ cursor: 'pointer', useHandCursor: true });
+    furnitureSprite.setData('furnitureId', furnitureId);
+    
+    // Gestion du clic pour afficher le menu contextuel
+    furnitureSprite.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      console.log('Clic sur meuble:', furnitureId);
+      if (pointer.event) {
+        pointer.event.stopPropagation();
+      }
+      this.showFurnitureMenu(furnitureId, pointer.x, pointer.y);
+    }, this);
+
+    this.placedFurnitureSprites.set(furnitureId, furnitureSprite);
+
+    // Désactiver le mode placement
+    setPlacementMode(false);
+    if (this.placementGhost) {
+      this.placementGhost.destroy();
+      this.placementGhost = null;
+    }
+    this.placementRotation = 0;
+
+    console.log('Meuble placé!', placedFurniture);
+  }
+
+  /**
+   * Ramasser un meuble placé
+   */
+  private pickUpFurniture(furnitureId: string) {
+    const { removePlacedFurniture, placementMode } = useStore.getState();
+    
+    // Ne pas ramasser si on est en mode placement
+    if (placementMode.active) return;
+
+    const sprite = this.placedFurnitureSprites.get(furnitureId);
+    if (sprite) {
+      sprite.destroy();
+      this.placedFurnitureSprites.delete(furnitureId);
+    }
+
+    removePlacedFurniture(furnitureId);
+    
+    // ✅ NOUVEAU: Émettre au serveur pour tracking des quêtes
+    socketService.socket?.emit('removeFurniture', {
+      furnitureId: furnitureId
+    });
+    
+    console.log('Meuble ramassé:', furnitureId);
+    
+    // TODO: Ajouter +1 à la quantité dans l'inventaire
+  }
+
+  /**
+   * Charger les meubles placés au démarrage
+   */
+  private loadPlacedFurniture() {
+    const { placedFurniture } = useStore.getState();
+
+    placedFurniture.forEach((furniture) => {
+      const isoPos = this.cartToIso(furniture.x, furniture.y);
+      const sprite = this.add.image(isoPos.x, isoPos.y - 20, furniture.furnitureType);
+      sprite.setDepth(500);
+      sprite.setRotation((furniture.rotation * Math.PI) / 180);
+      sprite.setInteractive({ cursor: 'pointer', useHandCursor: true });
+      sprite.setData('furnitureId', furniture.id);
+      
+      sprite.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+        console.log('Clic sur meuble chargé:', furniture.id);
+        if (pointer.event) {
+          pointer.event.stopPropagation();
+        }
+        this.showFurnitureMenu(furniture.id, pointer.x, pointer.y);
+      }, this);
+
+      this.placedFurnitureSprites.set(furniture.id, sprite);
+    });
+
+    console.log('Meubles chargés:', placedFurniture.length);
+  }
+
+  /**
+   * Convertir coordonnées cartésiennes (grille) vers isométriques (écran)
+   */
+  private cartToIso(x: number, y: number): { x: number; y: number } {
+    const isoX = (x - y) * (ISO_TILE_WIDTH / 2) + 400;
+    const isoY = (x + y) * (ISO_TILE_HEIGHT / 2) + 100;
+    return { x: isoX, y: isoY };
+  }
+
+  /**
+   * Calculer la profondeur (z-index) basée sur la position en grille
+   */
+  private getDepth(x: number, y: number): number {
+    return (x + y) * 10;
+  }
+
+  /**
+   * Obtenir le sprite de direction basé sur le mouvement
    */
   private getDirectionSprite(direction: string, color: string = 'blue'): string {
-    // Mapper les 4 directions vers les 8 directions du sprite
     const dirMap: { [key: string]: string } = {
-      'down': 's',   // Sud
-      'right': 'e',  // Est
-      'up': 'n',     // Nord
-      'left': 'w',   // Ouest
+      'down': 'se',
+      'right': 'se',
+      'up': 'nw',
+      'left': 'sw',
     };
     
-    const dir = dirMap[direction] || 's';
-    return `walk_${dir}`; // Retourne le nom de l'animation
-  }
-
-  /**
-   * ✅ MODIFIÉ: Obtenir le frame index pour une direction donnée
-   */
-  private getDirectionFrameIndex(direction: string): number {
-    const dirMap: { [key: string]: number } = {
-      'down': 3,   // S (ligne 1)
-      'right': 21, // E (ligne 7)
-      'up': 15,    // N (ligne 5)
-      'left': 9,   // W (ligne 3)
-    };
-    
-    return dirMap[direction] || 3;
+    const isoDir = dirMap[direction] || 'se';
+    return `char_${color}_${isoDir}`;
   }
 
   private createIsoRoom() {
     const roomWidth = 20;
     const roomHeight = 15;
-    const offsetX = 400;
-    const offsetY = 100;
-    
     const store = useStore.getState();
-    const room = store.currentRoom;
-    const floorTile = room?.floorType || 'wooden';
-    
+    const floorType = store.currentRoom?.floor || 'checkered_gray';
+    const tileKey = `floor_${floorType}`;
+    const wallColor = 'gray';
+
+    console.log('Creating room with floor:', tileKey);
+
+    // Créer le sol - TOUJOURS en arrière-plan
     for (let y = 0; y < roomHeight; y++) {
       for (let x = 0; x < roomWidth; x++) {
         const isoPos = this.cartToIso(x, y);
-        const tile = this.add.image(
-          isoPos.x + offsetX,
-          isoPos.y + offsetY,
-          `floor_${floorTile}`
-        );
-        tile.setOrigin(0.5, 1);
-        tile.setDepth(0);
+        const tile = this.add.image(isoPos.x, isoPos.y, tileKey);
+        tile.setDepth(0); // Depth fixe très bas pour le sol
+        
+        // Vérifier si la texture est chargée
+        if (!this.textures.exists(tileKey)) {
+          console.error('Texture manquante:', tileKey);
+        }
       }
     }
 
-    const wallColor = room?.wallColor || 'gray';
-    
+    // Créer les murs (arrière et côtés) - Depth 1-99
+    // Mur arrière (top)
     for (let x = 0; x < roomWidth; x++) {
-      const posBack = this.cartToIso(x, 0);
-      const wall = this.add.image(
-        posBack.x + offsetX,
-        posBack.y + offsetY,
-        `wall_${wallColor}`
-      );
-      wall.setOrigin(0.5, 1);
-      wall.setDepth(100);
+      const isoPos = this.cartToIso(x, 0);
+      const wall = this.add.image(isoPos.x, isoPos.y - WALL_HEIGHT / 2, `wall_${wallColor}`);
+      wall.setDepth(10);
     }
 
+    // Mur gauche
     for (let y = 0; y < roomHeight; y++) {
-      const posLeft = this.cartToIso(0, y);
-      const wall = this.add.image(
-        posLeft.x + offsetX,
-        posLeft.y + offsetY,
-        `wall_${wallColor}`
-      );
-      wall.setOrigin(0.5, 1);
-      wall.setDepth(100);
+      const isoPos = this.cartToIso(0, y);
+      const wall = this.add.image(isoPos.x, isoPos.y - WALL_HEIGHT / 2, `wall_${wallColor}`);
+      wall.setDepth(10);
+      wall.setAlpha(0.7);
     }
 
-    const doorX = Math.floor(roomWidth / 2);
-    const doorPos = this.cartToIso(doorX, 0);
-    const door = this.add.image(
-      doorPos.x + offsetX,
-      doorPos.y + offsetY,
-      'door'
-    );
-    door.setOrigin(0.5, 1);
-    door.setDepth(150);
-    door.setInteractive({ cursor: 'pointer' });
-    door.on('pointerdown', () => {
-      socketService.leaveRoom();
-      const { setCurrentRoom } = useStore.getState();
-      setCurrentRoom(null);
-    });
+    // Porte d'entrée - Depth 100
+    const doorPos = this.cartToIso(roomWidth - 1, roomHeight - 1);
+    const door = this.add.image(doorPos.x + 32, doorPos.y + 16, 'door');
+    door.setDepth(100);
+    door.setScale(0.8);
+
+    // Ajouter quelques meubles - Depth 200-500
+    this.addFurniture(5, 5, 'furniture_chair');
+    this.addFurniture(12, 5, 'furniture_table');
+    this.addFurniture(3, 12, 'furniture_plant');
+    this.addFurniture(15, 10, 'furniture_chair');
   }
 
-  private cartToIso(x: number, y: number) {
-    const offsetX = 400;
-    const offsetY = 100;
-    
-    const isoX = (x - y) * (ISO_TILE_WIDTH / 2);
-    const isoY = (x + y) * (ISO_TILE_HEIGHT / 2);
-    
-    return { x: isoX + offsetX, y: isoY + offsetY };
-  }
-
-  private checkPlacementMode() {
-    const { placementMode } = useStore.getState();
-    
-    if (placementMode.active && placementMode.itemId) {
-      if (!this.placementGhost) {
-        this.placementGhost = this.add.image(0, 0, placementMode.itemId);
-        this.placementGhost.setOrigin(0.5, 1);
-        this.placementGhost.setAlpha(0.7);
-        this.placementGhost.setTint(0x00ff00);
-        this.placementGhost.setDepth(999);
-      }
-      
-      const pointer = this.input.activePointer;
-      const gridPos = this.screenToGrid(pointer.worldX, pointer.worldY);
-      const isoPos = this.cartToIso(gridPos.x, gridPos.y);
-      
-      this.placementGhost.setPosition(isoPos.x, isoPos.y);
-    } else if (this.placementGhost) {
-      this.placementGhost.destroy();
-      this.placementGhost = null;
-      this.placementRotation = 0;
-    }
-  }
-
-  private placeFurniture(screenX: number, screenY: number) {
-    const { placementMode, currentRoom, user, setPlacementMode } = useStore.getState();
-    
-    if (!placementMode.active || !placementMode.itemId || !currentRoom || !user) {
-      return;
-    }
-    
-    const gridPos = this.screenToGrid(screenX, screenY);
-    
-    if (!this.isValidPosition({ x: gridPos.x, y: gridPos.y, direction: 'down' })) {
-      return;
-    }
-    
-    socketService.placeFurniture({
-      itemId: placementMode.itemId,
-      position: { x: gridPos.x, y: gridPos.y },
-      rotation: this.placementRotation,
-    }, (success, furnitureId) => {
-      if (success && furnitureId) {
-        const isoPos = this.cartToIso(gridPos.x, gridPos.y);
-        const sprite = this.add.image(isoPos.x, isoPos.y, placementMode.itemId);
-        sprite.setOrigin(0.5, 1);
-        sprite.setAngle(this.placementRotation);
-        sprite.setDepth(500);
-        sprite.setInteractive({ cursor: 'pointer' });
-        
-        sprite.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
-          if (pointer.event) {
-            pointer.event.stopPropagation();
-          }
-          this.showFurnitureMenu(furnitureId, sprite);
-        });
-        
-        this.placedFurnitureSprites.set(furnitureId, sprite);
-        
-        setPlacementMode(false);
-        
-        if (this.placementGhost) {
-          this.placementGhost.destroy();
-          this.placementGhost = null;
-          this.placementRotation = 0;
-        }
-      }
-    });
-  }
-
-  private loadPlacedFurniture() {
-    socketService.getPlacedFurniture((furniture) => {
-      furniture.forEach((item) => {
-        const isoPos = this.cartToIso(item.position.x, item.position.y);
-        const sprite = this.add.image(isoPos.x, isoPos.y, item.itemId);
-        sprite.setOrigin(0.5, 1);
-        sprite.setAngle(item.rotation);
-        sprite.setDepth(500);
-        sprite.setInteractive({ cursor: 'pointer' });
-        
-        sprite.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
-          if (pointer.event) {
-            pointer.event.stopPropagation();
-          }
-          this.showFurnitureMenu(item.id, sprite);
-        });
-        
-        this.placedFurnitureSprites.set(item.id, sprite);
-      });
-    });
-  }
-
-  private showFurnitureMenu(furnitureId: string, sprite: Phaser.GameObjects.Image) {
-    const store = useStore.getState();
-    
-    const confirmDelete = confirm('Voulez-vous supprimer ce meuble?');
-    if (confirmDelete) {
-      socketService.removeFurniture(furnitureId, (success) => {
-        if (success) {
-          sprite.destroy();
-          this.placedFurnitureSprites.delete(furnitureId);
-        }
-      });
-    }
-  }
-
-  private showPlayerProfile(
-    userId: string,
-    username: string,
-    level: number,
-    x: number,
-    y: number
-  ) {
-    const store = useStore.getState();
-    store.setSelectedPlayer({ userId, username, level });
+  private addFurniture(x: number, y: number, type: string) {
+    const isoPos = this.cartToIso(x, y);
+    const furniture = this.add.image(isoPos.x, isoPos.y - 20, type);
+    furniture.setDepth(300); // Depth fixe pour meubles
   }
 
   private createPlayerSprite(userId: string, player: Player) {
     const isoPos = this.cartToIso(player.position.x, player.position.y);
     
-    // ✅ Utilise le nouveau sprite
-    const sprite = this.add.sprite(isoPos.x, isoPos.y, 'character_8dir', 0);
-    sprite.setDepth(1000);
+    // Sprite du joueur (couleur aléatoire pour différencier)
+    const colors = ['blue', 'green', 'red', 'yellow'];
+    const randomColor = colors[Math.floor(Math.random() * colors.length)];
+    const sprite = this.add.sprite(isoPos.x, isoPos.y, `char_${randomColor}_se`);
+    sprite.setDepth(1000); // Depth fixe élevé comme le joueur principal
     sprite.setData('gridX', player.position.x);
     sprite.setData('gridY', player.position.y);
-    sprite.setData('color', 'green'); // Pour différencier des autres joueurs
+    sprite.setData('color', randomColor);
+    sprite.setData('userId', userId);
+    sprite.setData('username', player.username);
+    sprite.setData('level', player.level);
     
+    // Rendre le sprite cliquable pour afficher le profil
     sprite.setInteractive({ cursor: 'pointer' });
     sprite.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
       if (pointer.event) {
         pointer.event.stopPropagation();
       }
-      this.showPlayerProfile(userId, player.username, player.avatar?.level || 1, pointer.x, pointer.y);
+      this.showPlayerProfile(userId, player.username, player.level, pointer.x, pointer.y);
     }, this);
     
+    // Nom du joueur (CACHÉ - on le garde pour ne pas casser le code)
     const nameText = this.add.text(isoPos.x, isoPos.y - 60, player.username, {
       fontSize: '14px',
       color: '#ffffff',
@@ -574,8 +1047,8 @@ export class LobbySceneIso extends Phaser.Scene {
       padding: { x: 6, y: 3 },
     });
     nameText.setOrigin(0.5, 1);
-    nameText.setDepth(1001);
-    nameText.setVisible(false);
+    nameText.setDepth(1001); // Au-dessus du sprite
+    nameText.setVisible(false); // ← CACHÉ!
     
     this.players.set(userId, { sprite, nameText });
   }
@@ -585,12 +1058,13 @@ export class LobbySceneIso extends Phaser.Scene {
     this.currentPosition = newPosition;
 
     const isoPos = this.cartToIso(newPosition.x, newPosition.y);
-    const newDepth = 1000;
+    const newDepth = 1000; // Toujours au-dessus
     
-    // ✅ MODIFIÉ: Jouer l'animation correspondante
-    const animKey = this.getDirectionSprite(newPosition.direction);
-    this.player.play(animKey);
+    // Changer le sprite selon la direction
+    const newSprite = this.getDirectionSprite(newPosition.direction);
+    this.player.setTexture(newSprite);
 
+    // Animer le mouvement
     this.tweens.add({
       targets: this.player,
       x: isoPos.x,
@@ -601,13 +1075,10 @@ export class LobbySceneIso extends Phaser.Scene {
         this.isMoving = false;
         this.player.setData('gridX', newPosition.x);
         this.player.setData('gridY', newPosition.y);
-        // Arrêter l'animation et afficher idle
-        this.player.stop();
-        const idleFrame = this.getDirectionFrameIndex(newPosition.direction);
-        this.player.setFrame(idleFrame);
       },
     });
 
+    // Animer le texte du nom
     this.tweens.add({
       targets: this.playerNameText,
       x: isoPos.x,
@@ -616,8 +1087,10 @@ export class LobbySceneIso extends Phaser.Scene {
       ease: 'Linear',
     });
 
+    // **NOUVEAU: Faire suivre la caméra**
     this.cameras.main.pan(isoPos.x, isoPos.y, 200, 'Linear');
 
+    // Envoyer la position au serveur
     socketService.move(newPosition);
   }
 
@@ -628,6 +1101,7 @@ export class LobbySceneIso extends Phaser.Scene {
   private setupSocketEvents() {
     const store = useStore.getState();
 
+    // Nouveau joueur rejoint
     socketService.onPlayerJoined((data) => {
       if (data.userId !== store.user?.id) {
         this.createPlayerSprite(data.userId, {
@@ -639,6 +1113,7 @@ export class LobbySceneIso extends Phaser.Scene {
       }
     });
 
+    // Joueur quitte
     socketService.onPlayerLeft((data) => {
       const playerData = this.players.get(data.userId);
       if (playerData) {
@@ -648,15 +1123,17 @@ export class LobbySceneIso extends Phaser.Scene {
       }
     });
 
+    // Joueur bouge
     socketService.onPlayerMoved((data) => {
       const playerData = this.players.get(data.userId);
       if (playerData) {
         const { sprite, nameText } = playerData;
         const isoPos = this.cartToIso(data.position.x, data.position.y);
         
-        // ✅ MODIFIÉ: Jouer l'animation
-        const animKey = this.getDirectionSprite(data.position.direction);
-        sprite.play(animKey);
+        // Changer le sprite
+        const color = sprite.getData('color') || 'green';
+        const newSprite = this.getDirectionSprite(data.position.direction, color);
+        sprite.setTexture(newSprite);
         
         this.tweens.add({
           targets: sprite,
@@ -664,11 +1141,6 @@ export class LobbySceneIso extends Phaser.Scene {
           y: isoPos.y,
           duration: 200,
           ease: 'Linear',
-          onComplete: () => {
-            sprite.stop();
-            const idleFrame = this.getDirectionFrameIndex(data.position.direction);
-            sprite.setFrame(idleFrame);
-          },
         });
 
         this.tweens.add({
@@ -684,31 +1156,39 @@ export class LobbySceneIso extends Phaser.Scene {
       }
     });
 
+    // Messages de chat
     socketService.onChatMessage((message: any) => {
+      // ChatBox ajoute déjà le message au store, on ne le fait pas ici
+      
+      // Récupérer le type de message et la cible
       const bubbleType: BubbleType = message.type || 'normal';
       const whisperTarget = message.whisperTarget;
       
       console.log('Message reçu (bulle):', message);
       console.log('Type de bulle:', bubbleType);
       
+      // Déterminer si ce joueur doit voir la bulle
       const currentUserId = store.user?.id;
       
+      // Afficher la bulle au-dessus du bon personnage
       if (message.user.id === currentUserId) {
+        // Message de l'utilisateur actuel
         this.showChatBubble(
           this.player,
           message.user.id,
-          message.user.username,
+          message.user.username, // ← AJOUTÉ username
           message.content,
           bubbleType,
           whisperTarget
         );
       } else {
+        // Message d'un autre joueur
         const playerData = this.players.get(message.user.id);
         if (playerData) {
           this.showChatBubble(
             playerData.sprite,
             message.user.id,
-            message.user.username,
+            message.user.username, // ← AJOUTÉ username
             message.content,
             bubbleType,
             whisperTarget
@@ -736,7 +1216,7 @@ export class LobbySceneIso extends Phaser.Scene {
   private showChatBubble(
     sprite: Phaser.GameObjects.Sprite,
     userId: string,
-    username: string,
+    username: string, // ← AJOUTÉ
     message: string,
     bubbleType: BubbleType = 'normal',
     whisperTarget?: string
@@ -744,24 +1224,28 @@ export class LobbySceneIso extends Phaser.Scene {
     const store = useStore.getState();
     const currentUserId = store.user?.id;
     
+    // Vérifier si ce joueur doit voir cette bulle
     const speakerX = sprite.getData('gridX') || 0;
     const speakerY = sprite.getData('gridY') || 0;
     const viewerX = this.player.getData('gridX') || 0;
     const viewerY = this.player.getData('gridY') || 0;
 
+    // Récupérer les bulles existantes pour cet utilisateur
     if (!this.chatBubbles.has(userId)) {
       this.chatBubbles.set(userId, []);
     }
     
     const userBubbles = this.chatBubbles.get(userId)!;
     
-    const bubbleY = sprite.y - 60;
+    // NOUVELLE LOGIQUE: Créer la nouvelle bulle à la position de base
+    const bubbleY = sprite.y - 60; // Toujours à la même position de base
 
+    // Créer la bulle avec le username
     const bubble = new ChatBubble(
       this,
       sprite.x,
       bubbleY,
-      username,
+      username, // ← AJOUTÉ username
       message,
       bubbleType
     );
@@ -776,26 +1260,31 @@ export class LobbySceneIso extends Phaser.Scene {
     );
 
     if (!shouldShow) {
+      // Ne pas afficher cette bulle pour ce joueur
       bubble.destroy();
       return;
     }
 
+    // IMPORTANT: Pousser TOUTES les bulles existantes vers le haut de 60px
     userBubbles.forEach((existingBubble) => {
       this.tweens.add({
         targets: existingBubble,
-        y: existingBubble.y - 60,
-        duration: 200,
+        y: existingBubble.y - 60, // Monter de 60px
+        duration: 200, // Animation rapide
         ease: 'Power2'
       });
     });
 
+    // Stocker la bulle
     userBubbles.push(bubble);
 
+    // Limiter à 5 bulles max par joueur
     if (userBubbles.length > 5) {
       const oldBubble = userBubbles.shift();
       oldBubble?.destroy();
     }
 
+    // Auto-destruction après 30 secondes
     this.time.delayedCall(30000, () => {
       const index = userBubbles.indexOf(bubble);
       if (index > -1) {
