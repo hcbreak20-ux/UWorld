@@ -31,6 +31,14 @@ export class LobbySceneIso extends Phaser.Scene {
   private chatBubbles: Map<string, ChatBubble[]> = new Map(); // userId -> bulles
   // TileHighLight
   private tileHighlight: Phaser.GameObjects.Graphics | null = null;
+  // ✅ NOUVEAU: Système de drag caméra avec clic droit
+  private isDraggingCamera = false;
+  private dragStartX = 0;
+  private dragStartY = 0;
+  private cameraStartX = 0;
+  private cameraStartY = 0;
+
+constructor() {
 
   constructor() {
     super({ key: 'LobbySceneIso' });
@@ -173,8 +181,36 @@ export class LobbySceneIso extends Phaser.Scene {
     this.playerNameText.setVisible(false); // ← CACHÉ!
 
     // **NOUVEAU: Configurer la caméra**
-    this.cameras.main.setZoom(1); // Zoom initial
-    this.cameras.main.centerOn(isoPos.x, isoPos.y); // Centrer sur le personnage
+    this.cameras.main.setZoom(1);
+
+    // ✅ NOUVEAU: Drag de la caméra avec clic droit
+this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+  if (pointer.rightButtonDown()) {
+    this.isDraggingCamera = true;
+    this.dragStartX = pointer.x;
+    this.dragStartY = pointer.y;
+    this.cameraStartX = this.cameras.main.scrollX;
+    this.cameraStartY = this.cameras.main.scrollY;
+    this.input.setDefaultCursor('grabbing');
+  }
+});
+
+this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
+  if (this.isDraggingCamera) {
+    const deltaX = pointer.x - this.dragStartX;
+    const deltaY = pointer.y - this.dragStartY;
+    
+    this.cameras.main.scrollX = this.cameraStartX - deltaX;
+    this.cameras.main.scrollY = this.cameraStartY - deltaY;
+  }
+});
+
+this.input.on('pointerup', (pointer: Phaser.Input.Pointer) => {
+  if (this.isDraggingCamera) {
+    this.isDraggingCamera = false;
+    this.input.setDefaultCursor('default');
+  }
+});
 
     // **NOUVEAU: Contrôles de zoom avec la molette**
     this.input.on('wheel', (pointer: any, gameObjects: any, deltaX: number, deltaY: number) => {
@@ -200,8 +236,11 @@ export class LobbySceneIso extends Phaser.Scene {
     let lastClickTime = 0;
     const doubleClickDelay = 300; // ms
 
-    // **Configurer le clic souris pour déplacement OU placement**
+ // **Configurer le clic souris pour déplacement OU placement**
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      // ✅ NOUVEAU: Ignorer le clic droit (réservé pour la caméra)
+      if (pointer.rightButtonDown()) return;
+      
       if (!this.isMoving) {
         const placementMode = useStore.getState().placementMode;
         
@@ -1189,12 +1228,17 @@ export class LobbySceneIso extends Phaser.Scene {
     this.players.set(userId, { sprite, nameText });
   }
 
-  private movePlayer(newPosition: PlayerPosition) {
+private movePlayer(newPosition: PlayerPosition) {
     this.isMoving = true;
     this.currentPosition = newPosition;
 
     const isoPos = this.cartToIso(newPosition.x, newPosition.y);
     const newDepth = 1000; // Toujours au-dessus
+    
+    // ✅ NOUVEAU: Calculer la distance pour ajuster la durée
+    const oldPos = this.cartToIso(this.player.getData('gridX'), this.player.getData('gridY'));
+    const distance = Phaser.Math.Distance.Between(oldPos.x, oldPos.y, isoPos.x, isoPos.y);
+    const moveDuration = Math.max(400, distance * 8); // 8ms par pixel, minimum 400ms
     
     // ✅ MODIFIÉ: Utiliser animations si sprite 8 directions disponible
     const spriteKey = this.getDirectionSprite(newPosition.direction);
@@ -1212,7 +1256,7 @@ export class LobbySceneIso extends Phaser.Scene {
       targets: this.player,
       x: isoPos.x,
       y: isoPos.y,
-      duration: 400,
+      duration: moveDuration,  // ✅ MODIFIÉ: Durée proportionnelle
       ease: 'Linear',
       onComplete: () => {
         this.isMoving = false;
@@ -1231,6 +1275,20 @@ export class LobbySceneIso extends Phaser.Scene {
         }
       },
     });
+
+    // Animer le texte du nom
+    this.tweens.add({
+      targets: this.playerNameText,
+      x: isoPos.x,
+      y: isoPos.y - 60,
+      duration: moveDuration,  // ✅ MODIFIÉ: Même durée que le joueur
+      ease: 'Linear',
+    });
+
+
+    // Envoyer la position au serveur
+    socketService.move(newPosition);
+  }
 
     // Animer le texte du nom
     this.tweens.add({
