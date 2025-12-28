@@ -25,12 +25,13 @@ model User {
   avatarHairColor  String @default("#654321")  // Brun
   avatarShirtColor String @default("#130a01ff")  // Brun foncé
   avatarPantsColor String @default("#9c702dff")  // Brun pale
-  
+    // ✅ AJOUTE cette ligne quelque part dans le modèle User:
+  badges      UserBadge[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   lastLogin DateTime @default(now())
   
-  // Relations
+  // ✅Relations
   ownedRooms Room[]   @relation("RoomOwner")
   messages   Message[]
   userQuests UserQuest[]
@@ -91,7 +92,7 @@ model Economy {
   updatedAt   DateTime @updatedAt
 }
 
-// ===== SYSTÈME DE QUÊTES =====
+//✅ ===== SYSTÈME DE QUÊTES =====
 
 model Quest {
   id          String    @id @default(uuid())
@@ -175,4 +176,35 @@ enum ResetTime {
   DAILY   // Reset chaque jour à minuit
   WEEKLY  // Reset chaque lundi
   MONTHLY // Reset le 1er du mois
+}
+
+// ============================================
+// ✅ NOUVEAU: Système de Badges
+// ============================================
+
+model Badge {
+  id          String   @id @default(uuid())
+  key         String   @unique // Ex: "first_login", "level_10", "chat_master"
+  name        String   // Ex: "Premier Pas"
+  description String   // Ex: "Connectez-vous pour la première fois"
+  icon        String   // Ex: "👋" (emoji temporaire) ou "/assets/badges/first_login.png" (image finale)
+  category    String   // Ex: "welcome", "progression", "social", "special"
+  rarity      String   @default("common") // "common", "rare", "epic", "legendary"
+  createdAt   DateTime @default(now())
+  
+  // Relations
+  userBadges  UserBadge[]
+}
+
+model UserBadge {
+  id          String   @id @default(uuid())
+  userId      String
+  badgeId     String
+  unlockedAt  DateTime @default(now())
+  
+  // Relations
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badge       Badge    @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, badgeId]) // Un utilisateur ne peut débloquer un badge qu'une fois
 }
