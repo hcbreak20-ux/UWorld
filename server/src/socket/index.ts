@@ -117,15 +117,19 @@ export const initializeSocket = (server: HTTPServer) => {
         socket.join(roomId);
         socket.currentRoom = roomId;
 
-        // Récupérer les infos du joueur
-        const user = await prisma.user.findUnique({
-          where: { id: socket.userId },
-          select: {
-            id: true,
-            username: true,
-            avatar: true,
-          },
-        });
+// Récupérer les infos du joueur
+const user = await prisma.user.findUnique({
+  where: { id: socket.userId },
+  select: {
+    id: true,
+    username: true,
+    avatar: true,
+    avatarSkinColor: true,
+    avatarHairColor: true,
+    avatarShirtColor: true,
+    avatarPantsColor: true,
+  },
+});
 
         if (!user) return;
 
@@ -134,12 +138,16 @@ export const initializeSocket = (server: HTTPServer) => {
           roomPlayers[roomId] = {};
         }
 
-        // Ajouter le joueur avec position par défaut
-        roomPlayers[roomId][user.id] = {
-          username: user.username,
-          position: { x: 5, y: 5, direction: 'down' },
-          avatar: user.avatar,
-        };
+// Ajouter le joueur avec position par défaut
+roomPlayers[roomId][user.id] = {
+  username: user.username,
+  position: { x: 5, y: 5, direction: 'down' },
+  avatar: user.avatar,
+  avatarSkinColor: user.avatarSkinColor,
+  avatarHairColor: user.avatarHairColor,
+  avatarShirtColor: user.avatarShirtColor,
+  avatarPantsColor: user.avatarPantsColor,
+};
 
         // Envoyer les joueurs existants au nouveau joueur
         socket.emit('room_joined', {
@@ -147,13 +155,17 @@ export const initializeSocket = (server: HTTPServer) => {
           players: roomPlayers[roomId],
         });
 
-        // Notifier les autres joueurs qu'un nouveau joueur a rejoint
-        socket.to(roomId).emit('player_joined', {
-          userId: user.id,
-          username: user.username,
-          position: roomPlayers[roomId][user.id].position,
-          avatar: user.avatar,
-        });
+// Notifier les autres joueurs qu'un nouveau joueur a rejoint
+socket.to(roomId).emit('player_joined', {
+  userId: user.id,
+  username: user.username,
+  position: roomPlayers[roomId][user.id].position,
+  avatar: user.avatar,
+  avatarSkinColor: user.avatarSkinColor,
+  avatarHairColor: user.avatarHairColor,
+  avatarShirtColor: user.avatarShirtColor,
+  avatarPantsColor: user.avatarPantsColor,
+});
 
         // ✅ NOUVEAU: Tracker la progression des quêtes
         if (socket.userId) {
