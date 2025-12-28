@@ -3,9 +3,9 @@
   "version": "1.0.0",
   "description": "Backend pour jeu virtuel social",
   "main": "dist/index.js",
-  "scripts": {
-    "dev": "tsx watch src/index.ts",
-    "build": "npx prisma generate && npx prisma migrate deploy && tsc",
+"scripts": {
+  "build": "npx prisma generate && tsc",
+  "start": "npx prisma migrate deploy && node dist/index.js",
     "start": "node dist/index.js",
     "migrate": "prisma migrate deploy",
     "postinstall": "prisma generate",
