@@ -28,6 +28,7 @@ export const InventoryPanel: React.FC<InventoryPanelProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const [showQuests, setShowQuests] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  const [profileInitialTab, setProfileInitialTab] = useState<'profile' | 'achievements'>('profile');
   const [questsToClaimCount, setQuestsToClaimCount] = useState(3);
   const { setPlacementMode, user } = useStore();
 
@@ -123,15 +124,27 @@ export const InventoryPanel: React.FC<InventoryPanelProps> = ({
     setIsOpen(false);
   };
 
+  // ✅ Ouvrir le profil sur l'onglet Profile
+  const handleOpenProfile = () => {
+    setProfileInitialTab('profile');
+    setShowProfile(true);
+  };
+
+  // ✅ Ouvrir le profil sur l'onglet Achievements
+  const handleOpenAchievements = () => {
+    setProfileInitialTab('achievements');
+    setShowProfile(true);
+  };
+
   return (
     <>
       {/* Barre d'outils style Habbo en bas */}
       <div className="habbo-toolbar">
-        {/* ✅ NOUVEAU: Avatar Menu à gauche */}
+        {/* ✅ Avatar Menu à gauche */}
         <AvatarMenu
-          onProfileClick={() => setShowProfile(true)}
+          onProfileClick={handleOpenProfile}
           onLooksClick={() => navigate('/avatar')}
-          onAchievementsClick={() => setShowProfile(true)}
+          onAchievementsClick={handleOpenAchievements}
           onSettingsClick={() => alert('Settings - À venir!')}
         />
 
@@ -178,9 +191,12 @@ export const InventoryPanel: React.FC<InventoryPanelProps> = ({
         </div>
       </div>
 
-      {/* Panneau de Profil */}
+      {/* ✅ Panneau de Profil avec onglets */}
       {showProfile && (
-        <ProfilePanel onClose={() => setShowProfile(false)} />
+        <ProfilePanel 
+          onClose={() => setShowProfile(false)} 
+          initialTab={profileInitialTab}
+        />
       )}
 
       {/* Panneau de Quêtes */}
