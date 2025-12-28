@@ -9,7 +9,6 @@ import avatarRoutes from './routes/avatar.routes';
 import adminRoutes from './routes/admin.routes';
 import questRoutes from './routes/quest.routes';
 import levelRoutes from './routes/level.routes';
-import avatarRoutes from './routes/avatar.routes';
 
 const app = express();
 const server = http.createServer(app);
@@ -32,7 +31,6 @@ app.use('/api/avatar', avatarRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/quests', questRoutes);
 app.use('/api/level', levelRoutes);
-app.use('/api/avatar', avatarRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
