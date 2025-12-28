@@ -29,6 +29,8 @@ export class LobbySceneIso extends Phaser.Scene {
 
   // Système de bulles de chat
   private chatBubbles: Map<string, ChatBubble[]> = new Map(); // userId -> bulles
+  // TileHighLight
+  private tileHighlight: Phaser.GameObjects.Graphics | null = null;
 
   constructor() {
     super({ key: 'LobbySceneIso' });
@@ -124,6 +126,13 @@ export class LobbySceneIso extends Phaser.Scene {
     
     // Charger les meubles placés
     this.loadPlacedFurniture();
+
+    // Tile High light
+    this.tileHighlight = this.add.graphics();
+    this.tileHighlight.setDepth(5);
+    this.input.on('pointermove', (pointer) => {
+      this.updateTileHighlight(pointer.worldX, pointer.worldY);
+});
     
     // Créer le joueur principal
     const isoPos = this.cartToIso(this.currentPosition.x, this.currentPosition.y);
@@ -263,23 +272,55 @@ export class LobbySceneIso extends Phaser.Scene {
     }
   }
 
+
   /**
    * Convertir coordonnées écran vers grille
    */
   private screenToGrid(screenX: number, screenY: number): { x: number; y: number } {
-    // Ajuster pour le décalage de la caméra
     const offsetX = 400;
     const offsetY = 100;
     
     const relX = screenX - offsetX;
     const relY = screenY - offsetY;
     
-    // Formules inverses de cartToIso
     const gridX = Math.round((relX / (ISO_TILE_WIDTH / 2) + relY / (ISO_TILE_HEIGHT / 2)) / 2);
     const gridY = Math.round((relY / (ISO_TILE_HEIGHT / 2) - relX / (ISO_TILE_WIDTH / 2)) / 2);
     
     return { x: gridX, y: gridY };
   }
+
+  /**
+   * ✅ NOUVEAU: Mettre à jour le highlight de la tuile survolée
+   */
+  private updateTileHighlight(worldX: number, worldY: number) {
+    if (!this.tileHighlight) return;
+
+    const gridPos = this.screenToGrid(worldX, worldY);
+    const isValid = this.isValidPosition({ x: gridPos.x, y: gridPos.y, direction: 'down' });
+    
+    if (isValid) {
+      const isoPos = this.cartToIso(gridPos.x, gridPos.y);
+      
+      this.tileHighlight.clear();
+      this.tileHighlight.lineStyle(2, 0xFFFFFF, 0.8);
+      this.tileHighlight.fillStyle(0xFFFFFF, 0.2);
+      
+      const halfWidth = ISO_TILE_WIDTH / 2;
+      const halfHeight = ISO_TILE_HEIGHT / 2;
+      
+      this.tileHighlight.beginPath();
+      this.tileHighlight.moveTo(isoPos.x, isoPos.y - halfHeight);
+      this.tileHighlight.lineTo(isoPos.x + halfWidth, isoPos.y);
+      this.tileHighlight.lineTo(isoPos.x, isoPos.y + halfHeight);
+      this.tileHighlight.lineTo(isoPos.x - halfWidth, isoPos.y);
+      this.tileHighlight.closePath();
+      this.tileHighlight.fillPath();
+      this.tileHighlight.strokePath();
+    } else {
+      this.tileHighlight.clear();
+    }
+  }
+
 
   update() {
     if (!this.player || this.isMoving) return;
@@ -1171,7 +1212,7 @@ export class LobbySceneIso extends Phaser.Scene {
       targets: this.player,
       x: isoPos.x,
       y: isoPos.y,
-      duration: 200,
+      duration: 400,
       ease: 'Linear',
       onComplete: () => {
         this.isMoving = false;
@@ -1196,7 +1237,7 @@ export class LobbySceneIso extends Phaser.Scene {
       targets: this.playerNameText,
       x: isoPos.x,
       y: isoPos.y - 60,
-      duration: 200,
+      duration: 400,
       ease: 'Linear',
     });
 
@@ -1257,7 +1298,7 @@ export class LobbySceneIso extends Phaser.Scene {
           targets: sprite,
           x: isoPos.x,
           y: isoPos.y,
-          duration: 200,
+          duration: 400,
           ease: 'Linear',
           onComplete: () => {
             // ✅ AJOUTÉ: Arrêter l'animation
@@ -1276,7 +1317,7 @@ export class LobbySceneIso extends Phaser.Scene {
           targets: nameText,
           x: isoPos.x,
           y: isoPos.y - 60,
-          duration: 200,
+          duration: 400,
           ease: 'Linear',
         });
         
@@ -1399,7 +1440,7 @@ export class LobbySceneIso extends Phaser.Scene {
       this.tweens.add({
         targets: existingBubble,
         y: existingBubble.y - 60, // Monter de 60px
-        duration: 200, // Animation rapide
+        duration: 400, // Animation rapide
         ease: 'Power2'
       });
     });
