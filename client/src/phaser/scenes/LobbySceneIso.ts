@@ -1290,12 +1290,6 @@ private movePlayer(newPosition: PlayerPosition) {
     socketService.move(newPosition);
   }
 
-
-
-    // Envoyer la position au serveur
-    socketService.move(newPosition);
-  }
-
   private isValidPosition(position: PlayerPosition): boolean {
     return position.x >= 0 && position.x < 20 && position.y >= 0 && position.y < 15;
   }
