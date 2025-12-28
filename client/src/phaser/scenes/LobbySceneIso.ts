@@ -121,7 +121,7 @@ export class LobbySceneIso extends Phaser.Scene {
     });
   }
 
-  create() {
+  async create() {
     const store = useStore.getState();
     
     // Créer le groupe pour les objets
@@ -143,17 +143,44 @@ export class LobbySceneIso extends Phaser.Scene {
       this.updateTileHighlight(pointer.worldX, pointer.worldY);
 });
     
-    // Créer le joueur principal
-    const isoPos = this.cartToIso(this.currentPosition.x, this.currentPosition.y);
-    
-    // ✅ MODIFIÉ: Utiliser le sprite 8 directions si disponible, sinon l'ancien
-    const spriteKey = this.textures.exists('character_8dir') ? 'character_8dir' : 'char_blue_se';
-    const spriteFrame = this.textures.exists('character_8dir') ? 0 : undefined;
-    
-    this.player = this.add.sprite(isoPos.x, isoPos.y, spriteKey, spriteFrame);
-    this.player.setDepth(1000); // Depth élevé pour être toujours au-dessus
-    this.player.setData('gridX', this.currentPosition.x);
-    this.player.setData('gridY', this.currentPosition.y);
+// Créer le joueur principal
+  const isoPos = this.cartToIso(this.currentPosition.x, this.currentPosition.y);
+
+  // ✅ NOUVEAU: Charger les couleurs de l'utilisateur
+  let userColors = {
+    avatarSkinColor: '#FFDCB1',
+    avatarHairColor: '#654321',
+    avatarShirtColor: '#4287F5',
+    avatarPantsColor: '#323250',
+  };
+
+  try {
+    const response = await api.get('/avatar/colors');
+    userColors = response.data;
+  } catch (error) {
+    console.error('Erreur chargement couleurs avatar:', error);
+  }
+
+  // ✅ MODIFIÉ: Utiliser le sprite 8 directions si disponible, sinon l'ancien
+  const spriteKey = this.textures.exists('character_8dir') ? 'character_8dir' : 'char_blue_se';
+  const spriteFrame = this.textures.exists('character_8dir') ? 0 : undefined;
+
+  this.player = this.add.sprite(isoPos.x, isoPos.y, spriteKey, spriteFrame);
+  this.player.setDepth(1000); // Depth élevé pour être toujours au-dessus
+  this.player.setData('gridX', this.currentPosition.x);
+  this.player.setData('gridY', this.currentPosition.y);
+
+  // ✅ NOUVEAU: Appliquer le tint de la couleur du t-shirt
+  if (this.textures.exists('character_8dir')) {
+    const tintColor = Phaser.Display.Color.HexStringToColor(userColors.avatarShirtColor).color;
+    this.player.setTint(tintColor);
+  }
+
+  // ✅ NOUVEAU: Stocker les couleurs
+  this.player.setData('avatarSkinColor', userColors.avatarSkinColor);
+  this.player.setData('avatarHairColor', userColors.avatarHairColor);
+  this.player.setData('avatarShirtColor', userColors.avatarShirtColor);
+  this.player.setData('avatarPantsColor', userColors.avatarPantsColor);
     
 // Rendre le sprite du joueur principal cliquable pour afficher son profil
     this.player.setInteractive({ cursor: 'pointer' });
