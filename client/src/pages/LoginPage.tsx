@@ -33,7 +33,12 @@ export const LoginPage: React.FC = () => {
   return (
     <div className="auth-container">
       <div className="auth-box">
-        <h1>🏨 Virtual World</h1>
+        {/* ✅ Logo UWorld avec icône */}
+        <div className="auth-title">
+          <img src="/uworld-logo.png" alt="UWorld" className="auth-logo-icon" />
+          <h1>UWorld</h1>
+        </div>
+        
         <h2>Connexion</h2>
         
         {error && <div className="error-message">{error}</div>}

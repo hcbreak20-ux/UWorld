@@ -89,6 +89,7 @@ export const LobbyPage: React.FC = () => {
   if (loading) {
     return (
       <div className="loading-screen">
+        <img src="/uworld-logo.png" alt="UWorld" className="loading-logo" />
         <h2>Chargement...</h2>
       </div>
     );
@@ -98,7 +99,9 @@ export const LobbyPage: React.FC = () => {
     <div className="lobby-page">
       <div className="lobby-header">
         <div className="header-left">
-          <h1>🏨 UWorld</h1>
+          {/* ✅ Logo UWorld */}
+          <img src="/uworld-logo.png" alt="UWorld" className="header-logo" />
+          <h1>UWorld</h1>
         </div>
 
         <div className="header-actions">
@@ -137,7 +140,6 @@ export const LobbyPage: React.FC = () => {
         </div>
       </div>
 
-
       {/* Inventaire avec bouton Salles */}
       <InventoryPanel 
         showRoomList={showRoomList}
@@ -147,7 +149,7 @@ export const LobbyPage: React.FC = () => {
       {/* Barre d'expérience */}
       <ExperienceBar />
 
-            {/* Nouvelle barre de chat */}
+      {/* Nouvelle barre de chat */}
       <ChatInput />
     </div>
   );
