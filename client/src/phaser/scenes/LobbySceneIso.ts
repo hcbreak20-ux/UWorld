@@ -3,6 +3,7 @@ import { socketService } from '@/services/socket';
 import { useStore } from '@/store';
 import type { Player, PlayerPosition, Message } from '@/types';
 import { ChatBubble, type BubbleType } from '@/phaser/objects/ChatBubble';
+import { api } from '@/services/api'; 
 
 // Configuration isométrique
 const ISO_TILE_WIDTH = 64;
@@ -501,31 +502,9 @@ this.input.on('pointerup', (pointer: Phaser.Input.Pointer) => {
 // Si c'est le profil de l'utilisateur actuel, récupérer le vrai niveau
 if (userId === store.user?.id) {
   try {
-    const response = await fetch('/api/level/progress', {
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      }
-    });
-
-    console.log('📡 Response status:', response.status);
-    console.log('📡 Response headers:', response.headers);
-
-    const text = await response.text();
-    console.log('📄 Response text:', text);
-
-    if (response.ok) {
-      try {
-        const data = JSON.parse(text);
-        console.log('📊 Données parsées:', data);
-        actualLevel = data.level;
-        console.log('🎯 Niveau mis à jour:', actualLevel);
-      } catch (e) {
-        console.error('❌ Erreur parsing JSON:', e);
-        console.error('📄 Texte reçu:', text);
-      }
-    } else {
-      console.error('❌ Response not OK:', response.status, text);
-    }
+    const response = await api.get('/level/progress');
+    actualLevel = response.data.level;
+    console.log('🎯 Niveau récupéré:', actualLevel);
   } catch (error) {
     console.error('❌ Erreur chargement niveau:', error);
   }
