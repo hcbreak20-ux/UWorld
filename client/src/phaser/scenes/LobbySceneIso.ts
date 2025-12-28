@@ -86,12 +86,45 @@ export class LobbySceneIso extends Phaser.Scene {
     this.load.image('furniture_chair', '/assets/habbo-iso/furniture_chair.png');
     this.load.image('furniture_table', '/assets/habbo-iso/furniture_table.png');
     this.load.image('furniture_plant', '/assets/habbo-iso/furniture_plant.png');
+
+    // ✅ NOUVEAU: Charger les sprites LPC modulaires
+this.load.spritesheet('lpc_body', '/assets/characters/lpc/lpc_body.png', {
+  frameWidth: 64,
+  frameHeight: 64,
+});
+this.load.spritesheet('lpc_eyes', '/assets/characters/lpc/lpc_eyes.png', {
+  frameWidth: 64,
+  frameHeight: 64,
+});
+this.load.spritesheet('lpc_head', '/assets/characters/lpc/lpc_head.png', {
+  frameWidth: 64,
+  frameHeight: 64,
+});
+this.load.spritesheet('lpc_hair', '/assets/characters/lpc/lpc_hair.png', {
+  frameWidth: 64,
+  frameHeight: 64,
+});
+this.load.spritesheet('lpc_shirt', '/assets/characters/lpc/lpc_shirt.png', {
+  frameWidth: 64,
+  frameHeight: 64,
+});
+this.load.spritesheet('lpc_pants', '/assets/characters/lpc/lpc_pants.png', {
+  frameWidth: 64,
+  frameHeight: 64,
+});
+this.load.spritesheet('lpc_shoes', '/assets/characters/lpc/lpc_shoes.png', {
+  frameWidth: 64,
+  frameHeight: 64,
+});
   }
 
   /**
    * ✅ NOUVEAU: Créer les animations pour les 8 directions
    */
   private createCharacterAnimations() {
+
+    
+
     // Vérifier si le sprite est chargé
     if (!this.textures.exists('character_8dir')) {
       console.warn('Sprite character_8dir non chargé, animations non créées');
@@ -121,6 +154,72 @@ export class LobbySceneIso extends Phaser.Scene {
     });
   }
 
+  /**
+ * ✅ NOUVEAU: Créer les animations pour les sprites LPC
+ */
+private createLPCAnimations() {
+  const parts = ['lpc_body', 'lpc_eyes', 'lpc_head', 'lpc_hair', 'lpc_shirt', 'lpc_pants', 'lpc_shoes'];
+  const directions = ['down', 'left', 'right', 'up'];
+  
+  parts.forEach(part => {
+    directions.forEach((dir, index) => {
+      const startFrame = index * 9; // LPC a 9 frames par direction
+      
+      this.anims.create({
+        key: `${part}_walk_${dir}`,
+        frames: this.anims.generateFrameNumbers(part, {
+          start: startFrame,
+          end: startFrame + 8
+        }),
+        frameRate: 10,
+        repeat: -1
+      });
+    });
+  });
+}
+
+/**
+ * ✅ NOUVEAU: Créer un sprite LPC composite (plusieurs parties superposées)
+ */
+private createLPCCompositeSprite(x: number, y: number, colors?: any): Phaser.GameObjects.Container {
+  // Ordre de superposition (du bas vers le haut)
+  const layers = ['lpc_body', 'lpc_shoes', 'lpc_pants', 'lpc_shirt', 'lpc_head', 'lpc_eyes', 'lpc_hair'];
+  
+  // Créer un conteneur qui va tenir toutes les parties
+  const container = this.add.container(x, y);
+  
+  // Créer chaque partie du personnage
+  layers.forEach(layer => {
+    const sprite = this.add.sprite(0, 0, layer, 0);
+    
+    // Appliquer une couleur si fournie
+    if (colors) {
+      if (layer === 'lpc_body' && colors.avatarSkinColor) {
+        const tint = Phaser.Display.Color.HexStringToColor(colors.avatarSkinColor).color;
+        sprite.setTint(tint);
+      } else if (layer === 'lpc_hair' && colors.avatarHairColor) {
+        const tint = Phaser.Display.Color.HexStringToColor(colors.avatarHairColor).color;
+        sprite.setTint(tint);
+      } else if (layer === 'lpc_shirt' && colors.avatarShirtColor) {
+        const tint = Phaser.Display.Color.HexStringToColor(colors.avatarShirtColor).color;
+        sprite.setTint(tint);
+      } else if (layer === 'lpc_pants' && colors.avatarPantsColor) {
+        const tint = Phaser.Display.Color.HexStringToColor(colors.avatarPantsColor).color;
+        sprite.setTint(tint);
+      }
+    }
+    
+    // Ajouter au conteneur
+    container.add(sprite);
+    
+    // Stocker la référence pour pouvoir animer
+    container.setData(layer, sprite);
+  });
+  
+  container.setDepth(1000);
+  return container;
+}
+
   async create() {
     const store = useStore.getState();
     
@@ -129,6 +228,8 @@ export class LobbySceneIso extends Phaser.Scene {
     
     // ✅ NOUVEAU: Créer les animations 8 directions
     this.createCharacterAnimations();
+
+    this.createLPCAnimations(); // ✅ NOUVEAU
     
     // Créer la salle isométrique
     this.createIsoRoom();
@@ -144,58 +245,49 @@ export class LobbySceneIso extends Phaser.Scene {
 });
     
 // Créer le joueur principal
-  const isoPos = this.cartToIso(this.currentPosition.x, this.currentPosition.y);
+const isoPos = this.cartToIso(this.currentPosition.x, this.currentPosition.y);
 
-  // ✅ NOUVEAU: Charger les couleurs de l'utilisateur
-  let userColors = {
-    avatarSkinColor: '#FFDCB1',
-    avatarHairColor: '#654321',
-    avatarShirtColor: '#4287F5',
-    avatarPantsColor: '#323250',
-  };
+// ✅ NOUVEAU: Charger les couleurs de l'utilisateur
+let userColors = {
+  avatarSkinColor: '#FFDCB1',
+  avatarHairColor: '#654321',
+  avatarShirtColor: '#4287F5',
+  avatarPantsColor: '#323250',
+};
 
-  try {
-    const response = await api.get('/avatar/colors');
-    userColors = response.data;
-  } catch (error) {
-    console.error('Erreur chargement couleurs avatar:', error);
-  }
+try {
+  const response = await api.get('/avatar/colors');
+  userColors = response.data;
+} catch (error) {
+  console.error('Erreur chargement couleurs avatar:', error);
+}
 
-  // ✅ MODIFIÉ: Utiliser le sprite 8 directions si disponible, sinon l'ancien
-  const spriteKey = this.textures.exists('character_8dir') ? 'character_8dir' : 'char_blue_se';
-  const spriteFrame = this.textures.exists('character_8dir') ? 0 : undefined;
+// ✅ NOUVEAU: Créer un sprite composite LPC
+this.player = this.createLPCCompositeSprite(isoPos.x, isoPos.y, userColors) as any;
 
-  this.player = this.add.sprite(isoPos.x, isoPos.y, spriteKey, spriteFrame);
-  this.player.setDepth(1000); // Depth élevé pour être toujours au-dessus
-  this.player.setData('gridX', this.currentPosition.x);
-  this.player.setData('gridY', this.currentPosition.y);
+this.player.setData('gridX', this.currentPosition.x);
+this.player.setData('gridY', this.currentPosition.y);
 
-  // ✅ NOUVEAU: Appliquer le tint de la couleur du t-shirt
-  if (this.textures.exists('character_8dir')) {
-    const tintColor = Phaser.Display.Color.HexStringToColor(userColors.avatarShirtColor).color;
-    this.player.setTint(tintColor);
-  }
-
-  // ✅ NOUVEAU: Stocker les couleurs
-  this.player.setData('avatarSkinColor', userColors.avatarSkinColor);
-  this.player.setData('avatarHairColor', userColors.avatarHairColor);
-  this.player.setData('avatarShirtColor', userColors.avatarShirtColor);
-  this.player.setData('avatarPantsColor', userColors.avatarPantsColor);
-    
+// ✅ NOUVEAU: Stocker les couleurs
+this.player.setData('avatarSkinColor', userColors.avatarSkinColor);
+this.player.setData('avatarHairColor', userColors.avatarHairColor);
+this.player.setData('avatarShirtColor', userColors.avatarShirtColor);
+this.player.setData('avatarPantsColor', userColors.avatarPantsColor);
+  
 // Rendre le sprite du joueur principal cliquable pour afficher son profil
-    this.player.setInteractive({ cursor: 'pointer' });
-    this.player.on('pointerdown', async (pointer: Phaser.Input.Pointer) => {
-      if (pointer.event) {
-        pointer.event.stopPropagation();
-      }
-      await this.showPlayerProfile(
-        store.user?.id || '',
-        store.user?.username || 'Player',
-        store.user?.level || 1,
-        pointer.x,
-        pointer.y
-      );
-    }, this);
+this.player.setInteractive({ cursor: 'pointer' });
+this.player.on('pointerdown', async (pointer: Phaser.Input.Pointer) => {
+  if (pointer.event) {
+    pointer.event.stopPropagation();
+  }
+  await this.showPlayerProfile(
+    store.user?.id || '',
+    store.user?.username || 'Player',
+    store.user?.level || 1,
+    pointer.x,
+    pointer.y
+  );
+}, this);
     
     // Nom du joueur (CACHÉ)
     this.playerNameText = this.add.text(isoPos.x, isoPos.y - 60, store.user?.username || 'Player', {
