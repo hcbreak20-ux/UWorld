@@ -7,14 +7,13 @@ export const createPhaserGame = (parent: string) => {
     width: 1200,
     height: 800,
     parent,
-    // ✅ NOUVEAU
-    backgroundColor: '#000000',
+    backgroundColor: '#000000', // ✅ Noir pur
     scene: [LobbySceneIso],
     physics: {
       default: 'arcade',
       arcade: {
         gravity: { y: 0, x: 0 },
-        debug: false, // DÉSACTIVÉ pour enlever les lignes
+        debug: false,
       },
     },
     scale: {
@@ -22,10 +21,9 @@ export const createPhaserGame = (parent: string) => {
       autoCenter: Phaser.Scale.CENTER_BOTH,
     },
     render: {
-      pixelArt: true,
+      pixelArt: true, // ✅ Important pour les sprites pixel art
       antialias: false,
     },
   };
-
   return new Phaser.Game(config);
 };
