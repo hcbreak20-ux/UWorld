@@ -3,14 +3,11 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { LobbyPage } from './pages/LobbyPage';
-//import { AvatarEditor } from './pages/AvatarEditor';
 import { useStore } from './store';
 import './styles/global.css';
 import { AdminPanel } from '@/components/AdminPanel';
 import { AvatarCustomizer } from './pages/AvatarCustomizer';
 
-// Dans <Routes>:
-<Route path="/avatar" element={<AvatarCustomizer />} />
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated } = useStore();
@@ -31,14 +28,14 @@ const App: React.FC = () => {
             </ProtectedRoute>
           }
         />
-        {/*<Route
+        <Route
           path="/avatar"
           element={
             <ProtectedRoute>
-              <AvatarEditor />
+              <AvatarCustomizer />
             </ProtectedRoute>
           }
-        />*/}
+        />
         ```typescript
         <Route
          path="/admin"
