@@ -498,22 +498,38 @@ this.input.on('pointerup', (pointer: Phaser.Input.Pointer) => {
     let actualLevel = level;
     const store = useStore.getState();
     
-    // Si c'est le profil de l'utilisateur actuel, récupérer le vrai niveau
-    if (userId === store.user?.id) {
-      try {
-        const response = await fetch('/api/level/progress', {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        });
-        if (response.ok) {
-          const data = await response.json();
-          actualLevel = data.level;
-        }
-      } catch (error) {
-        console.error('Erreur chargement niveau:', error);
+// Si c'est le profil de l'utilisateur actuel, récupérer le vrai niveau
+if (userId === store.user?.id) {
+  try {
+    const response = await fetch('/api/level/progress', {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
       }
+    });
+
+    console.log('📡 Response status:', response.status);
+    console.log('📡 Response headers:', response.headers);
+
+    const text = await response.text();
+    console.log('📄 Response text:', text);
+
+    if (response.ok) {
+      try {
+        const data = JSON.parse(text);
+        console.log('📊 Données parsées:', data);
+        actualLevel = data.level;
+        console.log('🎯 Niveau mis à jour:', actualLevel);
+      } catch (e) {
+        console.error('❌ Erreur parsing JSON:', e);
+        console.error('📄 Texte reçu:', text);
+      }
+    } else {
+      console.error('❌ Response not OK:', response.status, text);
     }
+  } catch (error) {
+    console.error('❌ Erreur chargement niveau:', error);
+  }
+}
 
     // Créer l'overlay
     const overlay = document.createElement('div');
