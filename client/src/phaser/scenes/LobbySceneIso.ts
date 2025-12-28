@@ -1290,17 +1290,7 @@ private movePlayer(newPosition: PlayerPosition) {
     socketService.move(newPosition);
   }
 
-    // Animer le texte du nom
-    this.tweens.add({
-      targets: this.playerNameText,
-      x: isoPos.x,
-      y: isoPos.y - 60,
-      duration: 400,
-      ease: 'Linear',
-    });
 
-    // **NOUVEAU: Faire suivre la caméra**
-    this.cameras.main.pan(isoPos.x, isoPos.y, 200, 'Linear');
 
     // Envoyer la position au serveur
     socketService.move(newPosition);
