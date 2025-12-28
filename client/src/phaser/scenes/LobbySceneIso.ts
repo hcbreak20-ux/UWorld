@@ -183,15 +183,43 @@ export class LobbySceneIso extends Phaser.Scene {
     // **NOUVEAU: Configurer la caméra**
     this.cameras.main.setZoom(1);
 
-    // ✅ NOUVEAU: Drag de la caméra avec clic droit
+// **Configurer le clic souris: drag caméra OU déplacement/placement**
 this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
-  if (pointer.rightButtonDown()) {
+  // Si clic gauche avec mouvement, c'est un drag de caméra
+  if (pointer.leftButtonDown()) {
     this.isDraggingCamera = true;
     this.dragStartX = pointer.x;
     this.dragStartY = pointer.y;
     this.cameraStartX = this.cameras.main.scrollX;
     this.cameraStartY = this.cameras.main.scrollY;
     this.input.setDefaultCursor('grabbing');
+  }
+  
+  // Si le joueur ne bouge pas, gérer placement ou déplacement
+  if (!this.isMoving && pointer.leftButtonDown()) {
+    const placementMode = useStore.getState().placementMode;
+    
+    if (placementMode.active) {
+      // Mode placement: placer le meuble
+      this.placeFurniture(pointer.worldX, pointer.worldY);
+    } else {
+      // Mode normal: simple clic pour se déplacer (vérifié au pointerup)
+      // On ne fait rien ici, tout est géré dans pointerup
+    }
+  }
+});
+
+// **Configurer le relâchement du clic: déplacement ou fin de drag**
+this.input.on('pointerup', (pointer: Phaser.Input.Pointer) => {
+  if (this.isDraggingCamera) {
+    this.isDraggingCamera = false;
+    this.input.setDefaultCursor('default');
+  } else if (pointer.leftButtonReleased() && !this.isMoving) {
+    // Simple clic détecté (pas de drag): se déplacer
+    const placementMode = useStore.getState().placementMode;
+    if (!placementMode.active) {
+      this.handleMouseClick(pointer.worldX, pointer.worldY);
+    }
   }
 });
 
@@ -236,32 +264,7 @@ this.input.on('pointerup', (pointer: Phaser.Input.Pointer) => {
     let lastClickTime = 0;
     const doubleClickDelay = 300; // ms
 
- // **Configurer le clic souris pour déplacement OU placement**
-    this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
-      // ✅ NOUVEAU: Ignorer le clic droit (réservé pour la caméra)
-      if (pointer.rightButtonDown()) return;
-      
-      if (!this.isMoving) {
-        const placementMode = useStore.getState().placementMode;
-        
-        if (placementMode.active) {
-          // Mode placement: placer le meuble
-          this.placeFurniture(pointer.worldX, pointer.worldY);
-        } else {
-          // Mode normal: double-clic pour se déplacer
-          const currentTime = Date.now();
-          const timeSinceLastClick = currentTime - lastClickTime;
-          
-          if (timeSinceLastClick < doubleClickDelay) {
-            // Double-clic détecté: se déplacer
-            this.handleMouseClick(pointer.worldX, pointer.worldY);
-          }
-          // Sinon, c'est un simple clic (ne fait rien, les meubles gèrent leurs propres clics)
-          
-          lastClickTime = currentTime;
-        }
-      }
-    });
+
 
     // Configurer les événements Socket.IO
     this.setupSocketEvents();
