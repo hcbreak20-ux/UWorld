@@ -185,26 +185,20 @@ export class LobbySceneIso extends Phaser.Scene {
 
 // **Configurer le clic souris: drag caméra OU déplacement/placement**
 this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
-  // Si clic gauche avec mouvement, c'est un drag de caméra
   if (pointer.leftButtonDown()) {
-    this.isDraggingCamera = true;
+    // Préparer le drag (mais pas encore confirmé)
     this.dragStartX = pointer.x;
     this.dragStartY = pointer.y;
     this.cameraStartX = this.cameras.main.scrollX;
     this.cameraStartY = this.cameras.main.scrollY;
-    this.input.setDefaultCursor('grabbing');
   }
   
-  // Si le joueur ne bouge pas, gérer placement ou déplacement
+  // Si mode placement actif, placer le meuble
   if (!this.isMoving && pointer.leftButtonDown()) {
     const placementMode = useStore.getState().placementMode;
     
     if (placementMode.active) {
-      // Mode placement: placer le meuble
       this.placeFurniture(pointer.worldX, pointer.worldY);
-    } else {
-      // Mode normal: simple clic pour se déplacer (vérifié au pointerup)
-      // On ne fait rien ici, tout est géré dans pointerup
     }
   }
 });
@@ -224,19 +218,46 @@ this.input.on('pointerup', (pointer: Phaser.Input.Pointer) => {
 });
 
 this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
-  if (this.isDraggingCamera) {
-    const deltaX = pointer.x - this.dragStartX;
-    const deltaY = pointer.y - this.dragStartY;
+  // ✅ Mettre à jour le highlight de tuile
+  this.updateTileHighlight(pointer.worldX, pointer.worldY);
+  
+  // ✅ Si bouton gauche enfoncé ET la souris a bougé, c'est un drag
+  if (pointer.leftButtonDown()) {
+    const dragDistance = Phaser.Math.Distance.Between(
+      this.dragStartX, 
+      this.dragStartY, 
+      pointer.x, 
+      pointer.y
+    );
     
-    this.cameras.main.scrollX = this.cameraStartX - deltaX;
-    this.cameras.main.scrollY = this.cameraStartY - deltaY;
+    // Si bougé de plus de 5 pixels, activer le drag
+    if (dragDistance > 5 && !this.isDraggingCamera) {
+      this.isDraggingCamera = true;
+      this.input.setDefaultCursor('grabbing');
+    }
+    
+    // Si drag actif, bouger la caméra
+    if (this.isDraggingCamera) {
+      const deltaX = pointer.x - this.dragStartX;
+      const deltaY = pointer.y - this.dragStartY;
+      
+      this.cameras.main.scrollX = this.cameraStartX - deltaX;
+      this.cameras.main.scrollY = this.cameraStartY - deltaY;
+    }
   }
 });
 
 this.input.on('pointerup', (pointer: Phaser.Input.Pointer) => {
   if (this.isDraggingCamera) {
+    // C'était un drag: arrêter le drag
     this.isDraggingCamera = false;
     this.input.setDefaultCursor('default');
+  } else if (pointer.leftButtonReleased() && !this.isMoving) {
+    // C'était un simple clic: déplacer le personnage
+    const placementMode = useStore.getState().placementMode;
+    if (!placementMode.active) {
+      this.handleMouseClick(pointer.worldX, pointer.worldY);
+    }
   }
 });
 
