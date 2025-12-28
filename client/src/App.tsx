@@ -7,6 +7,10 @@ import { LobbyPage } from './pages/LobbyPage';
 import { useStore } from './store';
 import './styles/global.css';
 import { AdminPanel } from '@/components/AdminPanel';
+import { AvatarCustomizer } from './pages/AvatarCustomizer';
+
+// Dans <Routes>:
+<Route path="/avatar" element={<AvatarCustomizer />} />
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated } = useStore();
