@@ -1504,4 +1504,4 @@ private movePlayer(newPosition: PlayerPosition) {
       }
     });
   }
-
+}
