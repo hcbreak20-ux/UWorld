@@ -154,13 +154,13 @@ export class LobbySceneIso extends Phaser.Scene {
     this.player.setData('gridX', this.currentPosition.x);
     this.player.setData('gridY', this.currentPosition.y);
     
-    // Rendre le sprite du joueur principal cliquable pour afficher son profil
+// Rendre le sprite du joueur principal cliquable pour afficher son profil
     this.player.setInteractive({ cursor: 'pointer' });
-    this.player.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+    this.player.on('pointerdown', async (pointer: Phaser.Input.Pointer) => {
       if (pointer.event) {
         pointer.event.stopPropagation();
       }
-      this.showPlayerProfile(
+      await this.showPlayerProfile(
         store.user?.id || '',
         store.user?.username || 'Player',
         store.user?.level || 1,
@@ -203,13 +203,18 @@ this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
   }
 });
 
-// **Configurer le relâchement du clic: déplacement ou fin de drag**
 this.input.on('pointerup', (pointer: Phaser.Input.Pointer) => {
+  // ✅ Sauvegarder si on était en train de drag AVANT de le désactiver
+  const wasDragging = this.isDraggingCamera;
+  
   if (this.isDraggingCamera) {
+    // Arrêter le drag
     this.isDraggingCamera = false;
     this.input.setDefaultCursor('default');
-  } else if (pointer.leftButtonReleased() && !this.isMoving) {
-    // Simple clic détecté (pas de drag): se déplacer
+  }
+  
+  // ✅ Déplacer SEULEMENT si ce n'était PAS un drag
+  if (!wasDragging && pointer.leftButtonReleased() && !this.isMoving) {
     const placementMode = useStore.getState().placementMode;
     if (!placementMode.active) {
       this.handleMouseClick(pointer.worldX, pointer.worldY);
@@ -480,14 +485,35 @@ this.input.on('pointerup', (pointer: Phaser.Input.Pointer) => {
     this.placementGhost.setRotation((this.placementRotation * Math.PI) / 180);
   }
 
-  /**
+/**
    * Afficher le profil d'un joueur
    */
-  private showPlayerProfile(userId: string, username: string, level: number, screenX: number, screenY: number) {
+  private async showPlayerProfile(userId: string, username: string, level: number, screenX: number, screenY: number) {
     console.log('Afficher profil:', username);
     
     // Fermer le profil existant
     this.closePlayerProfile();
+
+    // ✅ NOUVEAU: Récupérer le niveau actuel depuis l'API
+    let actualLevel = level;
+    const store = useStore.getState();
+    
+    // Si c'est le profil de l'utilisateur actuel, récupérer le vrai niveau
+    if (userId === store.user?.id) {
+      try {
+        const response = await fetch('https://uworld-production.up.railway.app/api/level/progress', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          actualLevel = data.level;
+        }
+      } catch (error) {
+        console.error('Erreur chargement niveau:', error);
+      }
+    }
 
     // Créer l'overlay
     const overlay = document.createElement('div');
@@ -581,9 +607,9 @@ this.input.on('pointerup', (pointer: Phaser.Input.Pointer) => {
     `;
     profileDiv.appendChild(nameDiv);
 
-    // Niveau
+    // ✅ MODIFIÉ: Utiliser actualLevel au lieu de level
     const levelDiv = document.createElement('div');
-    levelDiv.innerHTML = `<span style="color: rgba(255, 255, 255, 0.7);">Niveau:</span> <span style="color: #667eea; font-weight: 600;">${level}</span>`;
+    levelDiv.innerHTML = `<span style="color: rgba(255, 255, 255, 0.7);">Niveau:</span> <span style="color: #667eea; font-weight: 600;">${actualLevel}</span>`;
     levelDiv.style.cssText = `
       font-size: 14px;
       text-align: center;
@@ -1229,13 +1255,13 @@ this.input.on('pointerup', (pointer: Phaser.Input.Pointer) => {
     sprite.setData('username', player.username);
     sprite.setData('level', player.level);
     
-    // Rendre le sprite cliquable pour afficher le profil
+// Rendre le sprite cliquable pour afficher le profil
     sprite.setInteractive({ cursor: 'pointer' });
-    sprite.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+    sprite.on('pointerdown', async (pointer: Phaser.Input.Pointer) => {
       if (pointer.event) {
         pointer.event.stopPropagation();
       }
-      this.showPlayerProfile(userId, player.username, player.level, pointer.x, pointer.y);
+      await this.showPlayerProfile(userId, player.username, player.level, pointer.x, pointer.y);
     }, this);
     
     // Nom du joueur (CACHÉ - on le garde pour ne pas casser le code)
