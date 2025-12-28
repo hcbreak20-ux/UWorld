@@ -20,6 +20,11 @@ model User {
   motto     String   @default("Je suis nouveau!")
   avatar    Json     @default("{\"gender\":\"male\",\"headType\":1,\"hairStyle\":1,\"clothingStyle\":1,\"skinColor\":\"light\",\"hairColor\":\"brown\",\"clothingColor\":\"blue\",\"pantsColor\":\"blue\"}")
   isAdmin   Boolean  @default(false)
+    // ✅ NOUVEAU: Couleurs d'avatar
+  avatarSkinColor  String @default("#FFDCB1")  // Beige clair
+  avatarHairColor  String @default("#654321")  // Brun
+  avatarShirtColor String @default("#130a01ff")  // Brun foncé
+  avatarPantsColor String @default("#9c702dff")  // Brun pale
   
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
