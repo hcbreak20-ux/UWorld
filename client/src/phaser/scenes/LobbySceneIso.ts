@@ -501,7 +501,7 @@ this.input.on('pointerup', (pointer: Phaser.Input.Pointer) => {
     // Si c'est le profil de l'utilisateur actuel, récupérer le vrai niveau
     if (userId === store.user?.id) {
       try {
-        const response = await fetch('https://uworld-production.up.railway.app/api/level/progress', {
+        const response = await fetch('/api/level/progress', {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           }
