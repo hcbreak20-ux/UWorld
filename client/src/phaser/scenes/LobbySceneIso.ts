@@ -59,6 +59,12 @@ export class LobbySceneIso extends Phaser.Scene {
       });
     });
 
+    // ✅ NOUVEAU: Charger le sprite 8 directions
+    this.load.spritesheet('character_8dir', '/assets/habbo-iso/uworld-character-8dir.png', {
+      frameWidth: 32,
+      frameHeight: 48
+    });
+
     // Charger les murs
     ['gray', 'blue', 'pink', 'green'].forEach(color => {
       this.load.image(`wall_${color}`, `/assets/habbo-iso/wall_${color}.png`);
@@ -71,11 +77,47 @@ export class LobbySceneIso extends Phaser.Scene {
     this.load.image('furniture_plant', '/assets/habbo-iso/furniture_plant.png');
   }
 
+  /**
+   * ✅ NOUVEAU: Créer les animations pour les 8 directions
+   */
+  private createCharacterAnimations() {
+    // Vérifier si le sprite est chargé
+    if (!this.textures.exists('character_8dir')) {
+      console.warn('Sprite character_8dir non chargé, animations non créées');
+      return;
+    }
+
+    const directions = ['se', 's', 'sw', 'w', 'nw', 'n', 'ne', 'e'];
+    
+    directions.forEach((dir, index) => {
+      // Animation de marche (3 frames)
+      this.anims.create({
+        key: `walk_${dir}`,
+        frames: this.anims.generateFrameNumbers('character_8dir', {
+          start: index * 3,
+          end: index * 3 + 2
+        }),
+        frameRate: 8,
+        repeat: -1
+      });
+      
+      // Animation idle (frame 0)
+      this.anims.create({
+        key: `idle_${dir}`,
+        frames: [{ key: 'character_8dir', frame: index * 3 }],
+        frameRate: 1
+      });
+    });
+  }
+
   create() {
     const store = useStore.getState();
     
     // Créer le groupe pour les objets
     this.gameObjects = this.add.group();
+    
+    // ✅ NOUVEAU: Créer les animations 8 directions
+    this.createCharacterAnimations();
     
     // Créer la salle isométrique
     this.createIsoRoom();
@@ -85,7 +127,12 @@ export class LobbySceneIso extends Phaser.Scene {
     
     // Créer le joueur principal
     const isoPos = this.cartToIso(this.currentPosition.x, this.currentPosition.y);
-    this.player = this.add.sprite(isoPos.x, isoPos.y, 'char_blue_se');
+    
+    // ✅ MODIFIÉ: Utiliser le sprite 8 directions si disponible, sinon l'ancien
+    const spriteKey = this.textures.exists('character_8dir') ? 'character_8dir' : 'char_blue_se';
+    const spriteFrame = this.textures.exists('character_8dir') ? 0 : undefined;
+    
+    this.player = this.add.sprite(isoPos.x, isoPos.y, spriteKey, spriteFrame);
     this.player.setDepth(1000); // Depth élevé pour être toujours au-dessus
     this.player.setData('gridX', this.currentPosition.x);
     this.player.setData('gridY', this.currentPosition.y);
@@ -942,9 +989,51 @@ export class LobbySceneIso extends Phaser.Scene {
   }
 
   /**
+   * ✅ NOUVEAU: Calculer la direction en 8 directions à partir d'un vecteur
+   */
+  private getDirection8(dx: number, dy: number): string {
+    // Si aucun mouvement, garder la direction actuelle
+    if (dx === 0 && dy === 0) {
+      return this.currentPosition.direction;
+    }
+
+    // Calculer l'angle en degrés
+    const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+    
+    // Normaliser entre 0-360
+    const normalized = (angle + 360) % 360;
+    
+    // Mapper les 8 directions (en coordonnées isométriques)
+    // 0° = droite, 90° = bas, 180° = gauche, 270° = haut
+    if (normalized >= 337.5 || normalized < 22.5) return 'right';
+    if (normalized >= 22.5 && normalized < 67.5) return 'down';
+    if (normalized >= 67.5 && normalized < 112.5) return 'down';
+    if (normalized >= 112.5 && normalized < 157.5) return 'down';
+    if (normalized >= 157.5 && normalized < 202.5) return 'left';
+    if (normalized >= 202.5 && normalized < 247.5) return 'up';
+    if (normalized >= 247.5 && normalized < 292.5) return 'up';
+    return 'up';
+  }
+
+  /**
    * Obtenir le sprite de direction basé sur le mouvement
    */
   private getDirectionSprite(direction: string, color: string = 'blue'): string {
+    // ✅ MODIFIÉ: Si le sprite 8 directions est disponible, utiliser les animations
+    if (this.textures.exists('character_8dir')) {
+      // Mapper les 4 directions vers les 8
+      const dirMap: { [key: string]: string } = {
+        'down': 's',   // Sud
+        'right': 'e',  // Est
+        'up': 'n',     // Nord
+        'left': 'w',   // Ouest
+      };
+      
+      const dir = dirMap[direction] || 's';
+      return `walk_${dir}`; // Retourne le nom de l'animation
+    }
+    
+    // Sinon, utiliser l'ancien système 4 directions
     const dirMap: { [key: string]: string } = {
       'down': 'se',
       'right': 'se',
@@ -1018,11 +1107,17 @@ export class LobbySceneIso extends Phaser.Scene {
   private createPlayerSprite(userId: string, player: Player) {
     const isoPos = this.cartToIso(player.position.x, player.position.y);
     
-    // Sprite du joueur (couleur aléatoire pour différencier)
-    const colors = ['blue', 'green', 'red', 'yellow'];
-    const randomColor = colors[Math.floor(Math.random() * colors.length)];
-    const sprite = this.add.sprite(isoPos.x, isoPos.y, `char_${randomColor}_se`);
-    sprite.setDepth(1000); // Depth fixe élevé comme le joueur principal
+    // ✅ MODIFIÉ: Utiliser le sprite 8 directions si disponible
+    let sprite: Phaser.GameObjects.Sprite;
+    const randomColor = ['blue', 'green', 'red', 'yellow'][Math.floor(Math.random() * 4)];
+    
+    if (this.textures.exists('character_8dir')) {
+      sprite = this.add.sprite(isoPos.x, isoPos.y, 'character_8dir', 0);
+    } else {
+      sprite = this.add.sprite(isoPos.x, isoPos.y, `char_${randomColor}_se`);
+    }
+    
+    sprite.setDepth(1000);
     sprite.setData('gridX', player.position.x);
     sprite.setData('gridY', player.position.y);
     sprite.setData('color', randomColor);
@@ -1060,9 +1155,16 @@ export class LobbySceneIso extends Phaser.Scene {
     const isoPos = this.cartToIso(newPosition.x, newPosition.y);
     const newDepth = 1000; // Toujours au-dessus
     
-    // Changer le sprite selon la direction
-    const newSprite = this.getDirectionSprite(newPosition.direction);
-    this.player.setTexture(newSprite);
+    // ✅ MODIFIÉ: Utiliser animations si sprite 8 directions disponible
+    const spriteKey = this.getDirectionSprite(newPosition.direction);
+    
+    if (this.textures.exists('character_8dir')) {
+      // Jouer l'animation
+      this.player.play(spriteKey);
+    } else {
+      // Utiliser l'ancien système
+      this.player.setTexture(spriteKey);
+    }
 
     // Animer le mouvement
     this.tweens.add({
@@ -1075,6 +1177,17 @@ export class LobbySceneIso extends Phaser.Scene {
         this.isMoving = false;
         this.player.setData('gridX', newPosition.x);
         this.player.setData('gridY', newPosition.y);
+        
+        // ✅ AJOUTÉ: Arrêter l'animation et afficher idle
+        if (this.textures.exists('character_8dir')) {
+          this.player.stop();
+          const dirMap: { [key: string]: string } = {
+            'down': 's', 'right': 'e', 'up': 'n', 'left': 'w'
+          };
+          const dir = dirMap[newPosition.direction] || 's';
+          const idleKey = `idle_${dir}`;
+          this.player.play(idleKey);
+        }
       },
     });
 
@@ -1130,10 +1243,15 @@ export class LobbySceneIso extends Phaser.Scene {
         const { sprite, nameText } = playerData;
         const isoPos = this.cartToIso(data.position.x, data.position.y);
         
-        // Changer le sprite
+        // ✅ MODIFIÉ: Utiliser animations si disponible
         const color = sprite.getData('color') || 'green';
-        const newSprite = this.getDirectionSprite(data.position.direction, color);
-        sprite.setTexture(newSprite);
+        const spriteKey = this.getDirectionSprite(data.position.direction, color);
+        
+        if (this.textures.exists('character_8dir')) {
+          sprite.play(spriteKey);
+        } else {
+          sprite.setTexture(spriteKey);
+        }
         
         this.tweens.add({
           targets: sprite,
@@ -1141,6 +1259,17 @@ export class LobbySceneIso extends Phaser.Scene {
           y: isoPos.y,
           duration: 200,
           ease: 'Linear',
+          onComplete: () => {
+            // ✅ AJOUTÉ: Arrêter l'animation
+            if (this.textures.exists('character_8dir')) {
+              sprite.stop();
+              const dirMap: { [key: string]: string } = {
+                'down': 's', 'right': 'e', 'up': 'n', 'left': 'w'
+              };
+              const dir = dirMap[data.position.direction] || 's';
+              sprite.play(`idle_${dir}`);
+            }
+          }
         });
 
         this.tweens.add({
