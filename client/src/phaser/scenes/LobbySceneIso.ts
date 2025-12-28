@@ -38,7 +38,7 @@ export class LobbySceneIso extends Phaser.Scene {
   private cameraStartX = 0;
   private cameraStartY = 0;
 
-constructor() {
+
 
   constructor() {
     super({ key: 'LobbySceneIso' });
@@ -1520,4 +1520,4 @@ private movePlayer(newPosition: PlayerPosition) {
       }
     });
   }
-}
+
