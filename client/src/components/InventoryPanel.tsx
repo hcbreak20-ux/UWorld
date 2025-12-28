@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useStore } from '@/store';
+import { useNavigate } from 'react-router-dom';
 import { QuestPanel } from './QuestPanel';
+import { ProfilePanel } from './ProfilePanel';
+import { AvatarMenu } from './AvatarMenu';
 import { questAPI } from '@/services/quest.service';
 import './InventoryPanel.css';
 
@@ -21,8 +24,10 @@ export const InventoryPanel: React.FC<InventoryPanelProps> = ({
   showRoomList, 
   onToggleRoomList 
 }) => {
+  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [showQuests, setShowQuests] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
   const [questsToClaimCount, setQuestsToClaimCount] = useState(3);
   const { setPlacementMode, user } = useStore();
 
@@ -122,6 +127,14 @@ export const InventoryPanel: React.FC<InventoryPanelProps> = ({
     <>
       {/* Barre d'outils style Habbo en bas */}
       <div className="habbo-toolbar">
+        {/* ✅ NOUVEAU: Avatar Menu à gauche */}
+        <AvatarMenu
+          onProfileClick={() => setShowProfile(true)}
+          onLooksClick={() => navigate('/avatar')}
+          onAchievementsClick={() => setShowProfile(true)}
+          onSettingsClick={() => alert('Settings - À venir!')}
+        />
+
         {/* Bouton Inventaire */}
         <div 
           className={`toolbar-button ${isOpen ? 'active' : ''}`}
@@ -164,6 +177,11 @@ export const InventoryPanel: React.FC<InventoryPanelProps> = ({
           <div className="toolbar-icon">👥</div>
         </div>
       </div>
+
+      {/* Panneau de Profil */}
+      {showProfile && (
+        <ProfilePanel onClose={() => setShowProfile(false)} />
+      )}
 
       {/* Panneau de Quêtes */}
       {showQuests && (

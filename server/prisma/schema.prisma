@@ -20,18 +20,24 @@ model User {
   motto     String   @default("Je suis nouveau!")
   avatar    Json     @default("{\"gender\":\"male\",\"headType\":1,\"hairStyle\":1,\"clothingStyle\":1,\"skinColor\":\"light\",\"hairColor\":\"brown\",\"clothingColor\":\"blue\",\"pantsColor\":\"blue\"}")
   isAdmin   Boolean  @default(false)
-    // ✅ NOUVEAU: Couleurs d'avatar
+  
+  // ✅ Couleurs d'avatar
   avatarSkinColor  String @default("#FFDCB1")  // Beige clair
   avatarHairColor  String @default("#654321")  // Brun
   avatarShirtColor String @default("#130a01ff")  // Brun foncé
   avatarPantsColor String @default("#9c702dff")  // Brun pale
-    // ✅ AJOUTE cette ligne quelque part dans le modèle User:
-  badges      UserBadge[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  lastLogin DateTime @default(now())
   
-  // ✅Relations
+  // ✅ NOUVEAU: Badge actif affiché sur le profil
+  activeBadgeId String?
+  
+  // ✅ Badges et dates
+  badges      UserBadge[]
+  activeBadge Badge?    @relation("ActiveBadge", fields: [activeBadgeId], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  lastLogin   DateTime  @default(now())
+  
+  // ✅ Relations
   ownedRooms Room[]   @relation("RoomOwner")
   messages   Message[]
   userQuests UserQuest[]
@@ -128,7 +134,7 @@ model Quest {
   
   @@index([type])
   @@index([isActive])
-  @@unique([name])  // ← AJOUTER CETTE LIGNE
+  @@unique([name])
 }
 
 model UserQuest {
@@ -142,8 +148,8 @@ model UserQuest {
   completedAt DateTime?
   
   // Pour daily/weekly reset
-  lastReset   DateTime? // Dernière fois que la quête a été reset
-  metadata      Json?     @default("{}")  // ← AJOUTER CETTE LIGNE
+  lastReset   DateTime?
+  metadata    Json?     @default("{}")
   
   // Récompense réclamée
   rewardClaimed Boolean @default(false)
@@ -179,7 +185,7 @@ enum ResetTime {
 }
 
 // ============================================
-// ✅ NOUVEAU: Système de Badges
+// ✅ SYSTÈME DE BADGES
 // ============================================
 
 model Badge {
@@ -193,7 +199,8 @@ model Badge {
   createdAt   DateTime @default(now())
   
   // Relations
-  userBadges  UserBadge[]
+  userBadges    UserBadge[]
+  activeForUsers User[]  @relation("ActiveBadge")
 }
 
 model UserBadge {

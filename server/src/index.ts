@@ -10,6 +10,7 @@ import adminRoutes from './routes/admin.routes';
 import questRoutes from './routes/quest.routes';
 import levelRoutes from './routes/level.routes';
 import badgeRoutes from './routes/badge.routes';
+import userRoutes from './routes/user.routes';
 
 const app = express();
 const server = http.createServer(app);
@@ -33,6 +34,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/quests', questRoutes);
 app.use('/api/level', levelRoutes);
 app.use('/api/badges', badgeRoutes);
+app.use('/api/users', userRoutes);
 
 // Health check
 app.get('/health', (req, res) => {

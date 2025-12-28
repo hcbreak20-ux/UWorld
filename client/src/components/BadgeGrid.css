@@ -1,0 +1,185 @@
+/* ============================================
+   BADGE GRID - Affichage des badges
+   ============================================ */
+
+.badge-grid-container {
+  height: 100%;
+  overflow-y: auto;
+  padding-right: 10px;
+}
+
+/* Catégorie de badges */
+.badge-category {
+  margin-bottom: 24px;
+}
+
+.badge-category-title {
+  color: #ffd700;
+  font-size: 14px;
+  font-weight: bold;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+/* Grille de badges */
+.badge-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+  gap: 12px;
+}
+
+/* Badge item */
+.badge-item {
+  position: relative;
+  background: linear-gradient(180deg, #2d2d2d 0%, #1a1a1a 100%);
+  border: 2px solid #444;
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-height: 100px;
+}
+
+/* Badge débloqué */
+.badge-item.unlocked {
+  border-color: #4a9eff;
+}
+
+.badge-item.unlocked:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 6px 16px rgba(74, 158, 255, 0.3);
+  background: linear-gradient(180deg, #3d3d3d 0%, #2a2a2a 100%);
+}
+
+/* Badge verrouillé */
+.badge-item.locked {
+  opacity: 0.5;
+  cursor: not-allowed;
+  filter: grayscale(100%);
+}
+
+.badge-item.locked:hover {
+  transform: none;
+}
+
+/* Badge actif */
+.badge-item.active {
+  border-color: #ffd700;
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
+  animation: badgePulse 2s ease-in-out infinite;
+}
+
+@keyframes badgePulse {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(255, 215, 0, 0.6);
+  }
+}
+
+/* Icône du badge */
+.badge-icon {
+  font-size: 36px;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+/* Nom du badge */
+.badge-name {
+  color: white;
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+  line-height: 1.2;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+/* Indicateur badge actif */
+.badge-active-indicator {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: #ffd700;
+  color: #000;
+  font-size: 9px;
+  font-weight: bold;
+  padding: 2px 6px;
+  border-radius: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Aucun badge */
+.no-badges {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  color: #888;
+  text-align: center;
+}
+
+.no-badges-icon {
+  font-size: 64px;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.no-badges p {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.no-badges small {
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+/* Scrollbar */
+.badge-grid-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.badge-grid-container::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+
+.badge-grid-container::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+}
+
+.badge-grid-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .badge-grid {
+    grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+    gap: 8px;
+  }
+
+  .badge-item {
+    padding: 8px;
+    min-height: 80px;
+  }
+
+  .badge-icon {
+    font-size: 28px;
+  }
+
+  .badge-name {
+    font-size: 10px;
+  }
+}
