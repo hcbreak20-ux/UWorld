@@ -71,6 +71,11 @@ export const AvatarCustomizer: React.FC = () => {
     //   return;
     // }
 
+       // ✅ AJOUTE CECI
+  console.log('💾 Sauvegarde des couleurs:', colors);
+  console.log('Type de avatarSkinColor:', typeof colors.avatarSkinColor);
+  console.log('Valeur:', colors.avatarSkinColor);
+
     setSaving(true);
     try {
       await api.put('/avatar/colors', colors);
