@@ -24,6 +24,10 @@ interface RoomPlayers {
       username: string;
       position: PlayerPosition;
       avatar: any;
+      avatarSkinColor: string;
+      avatarHairColor: string;
+      avatarShirtColor: string;
+      avatarPantsColor: string;
     };
   };
 }
