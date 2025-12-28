@@ -1230,25 +1230,41 @@ if (userId === store.user?.id) {
   }
 
   private createPlayerSprite(userId: string, player: Player) {
-    const isoPos = this.cartToIso(player.position.x, player.position.y);
+  const isoPos = this.cartToIso(player.position.x, player.position.y);
+
+  // ✅ NOUVEAU: Récupérer les couleurs personnalisées ou utiliser les défauts
+  const skinColor = player.avatarSkinColor || '#FFDCB1';
+  const hairColor = player.avatarHairColor || '#654321';
+  const shirtColor = player.avatarShirtColor || '#4287F5';
+  const pantsColor = player.avatarPantsColor || '#323250';
+
+  // Créer le sprite
+  let sprite: Phaser.GameObjects.Sprite;
+  
+  if (this.textures.exists('character_8dir')) {
+    sprite = this.add.sprite(isoPos.x, isoPos.y, 'character_8dir', 0);
     
-    // ✅ MODIFIÉ: Utiliser le sprite 8 directions si disponible
-    let sprite: Phaser.GameObjects.Sprite;
+    // ✅ NOUVEAU: Appliquer un tint basé sur la couleur du t-shirt
+    const tintColor = Phaser.Display.Color.HexStringToColor(shirtColor).color;
+    sprite.setTint(tintColor);
+  } else {
+    // Fallback à l'ancien système
     const randomColor = ['blue', 'green', 'red', 'yellow'][Math.floor(Math.random() * 4)];
-    
-    if (this.textures.exists('character_8dir')) {
-      sprite = this.add.sprite(isoPos.x, isoPos.y, 'character_8dir', 0);
-    } else {
-      sprite = this.add.sprite(isoPos.x, isoPos.y, `char_${randomColor}_se`);
-    }
-    
-    sprite.setDepth(1000);
-    sprite.setData('gridX', player.position.x);
-    sprite.setData('gridY', player.position.y);
-    sprite.setData('color', randomColor);
-    sprite.setData('userId', userId);
-    sprite.setData('username', player.username);
-    sprite.setData('level', player.level);
+    sprite = this.add.sprite(isoPos.x, isoPos.y, `char_${randomColor}_se`);
+  }
+
+  sprite.setDepth(1000);
+  sprite.setData('gridX', player.position.x);
+  sprite.setData('gridY', player.position.y);
+  sprite.setData('userId', userId);
+  sprite.setData('username', player.username);
+  sprite.setData('level', player.level);
+  
+  // ✅ NOUVEAU: Stocker les couleurs pour référence future
+  sprite.setData('avatarSkinColor', skinColor);
+  sprite.setData('avatarHairColor', hairColor);
+  sprite.setData('avatarShirtColor', shirtColor);
+  sprite.setData('avatarPantsColor', pantsColor);
     
 // Rendre le sprite cliquable pour afficher le profil
     sprite.setInteractive({ cursor: 'pointer' });
