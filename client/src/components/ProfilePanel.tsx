@@ -61,7 +61,8 @@ export const ProfilePanel: React.FC<ProfilePanelProps> = ({ onClose }) => {
               <div className="stat-icon">🏆</div>
               <div className="stat-info">
                 <span className="stat-label">Niveau</span>
-                <span className="stat-value">{user.level}</span>
+                {/* ✅ MODIFIÉ: Utilise xpProgress.level si disponible */}
+                <span className="stat-value">{xpProgress?.level ?? user.level}</span>
               </div>
             </div>
 
