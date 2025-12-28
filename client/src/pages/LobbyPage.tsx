@@ -4,7 +4,6 @@ import { createPhaserGame } from '@/phaser/config-iso';
 import { ChatBox } from '@/components/ChatBox';
 import { RoomList } from '@/components/RoomList';
 import { InventoryPanel } from '@/components/InventoryPanel';
-import { ProfilePanel } from '@/components/ProfilePanel';
 import { useStore } from '@/store';
 import { socketService } from '@/services/socket';
 import { authAPI, roomAPI } from '@/services/api';
@@ -20,7 +19,6 @@ export const LobbyPage: React.FC = () => {
   
   const [rooms, setRooms] = useState<Room[]>([]);
   const [showRoomList, setShowRoomList] = useState(false);
-  const [showProfile, setShowProfile] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -101,12 +99,6 @@ export const LobbyPage: React.FC = () => {
       <div className="lobby-header">
         <div className="header-left">
           <h1>🏨 UWorld</h1>
-          <button 
-            className="btn-profile"
-            onClick={() => setShowProfile(!showProfile)}
-          >
-            👤 Profil
-          </button>
         </div>
 
         <div className="header-actions">
@@ -145,10 +137,6 @@ export const LobbyPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Panneau de profil */}
-      {showProfile && (
-        <ProfilePanel onClose={() => setShowProfile(false)} />
-      )}
 
       {/* Inventaire avec bouton Salles */}
       <InventoryPanel 
