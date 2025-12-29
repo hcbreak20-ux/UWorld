@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useStore } from '@/store';
 import { socketService } from '@/services/socket';
 import { api } from '@/services/api';
@@ -13,11 +13,12 @@ interface UserLevel {
   lastFetched: number;
 }
 
+const MAX_MESSAGES = 10; // ✅ AJOUTÉ: Limite de messages
+
 export const ChatBox: React.FC = () => {
-  const { messages, addMessage, user } = useStore();
+  const { messages, addMessage, setMessages, user } = useStore();
   const [isVisible, setIsVisible] = useState(true);
   const [userLevels, setUserLevels] = useState<Map<string, UserLevel>>(new Map());
-  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // ✅ Fonction pour charger le niveau d'un utilisateur
   const fetchUserLevel = async (userId: string) => {
@@ -101,10 +102,13 @@ export const ChatBox: React.FC = () => {
     return cleanup;
   }, [addMessage]);
 
+  // ✅ NOUVEAU: Limiter à 10 messages max
   useEffect(() => {
-    // Auto-scroll vers le bas
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    if (messages.length > MAX_MESSAGES) {
+      // Garder seulement les 10 derniers
+      setMessages(messages.slice(-MAX_MESSAGES));
+    }
+  }, [messages, setMessages]);
 
   const formatTime = (dateString: string) => {
     const date = new Date(dateString);
@@ -149,7 +153,8 @@ export const ChatBox: React.FC = () => {
               </div>
             )}
             
-            {messages.map((message, index) => {
+            {/* ✅ MODIFIÉ: Afficher seulement les 10 derniers messages */}
+            {messages.slice(-MAX_MESSAGES).map((message, index) => {
               const userLevel = getUserLevel(message);
               
               return (
@@ -174,7 +179,6 @@ export const ChatBox: React.FC = () => {
                 </div>
               );
             })}
-            <div ref={messagesEndRef} />
           </div>
         </>
       )}
