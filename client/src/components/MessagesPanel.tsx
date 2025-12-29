@@ -39,9 +39,19 @@ export const MessagesPanel: React.FC<MessagesPanelProps> = ({ onClose, initialUs
   const { user } = useStore();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(initialUserId || null);
+  const [selectedUsername, setSelectedUsername] = useState<string>('');
   const [messages, setMessages] = useState<PrivateMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // ✅ AJOUTER: Quand initialUserId change, mettre à jour selectedUserId
+useEffect(() => {
+  if (initialUserId) {
+    setSelectedUserId(initialUserId);
+
+    // On devra récupérer le username plus tard
+  }
+}, [initialUserId]);
 
   // Charger les conversations
   useEffect(() => {
@@ -76,29 +86,32 @@ export const MessagesPanel: React.FC<MessagesPanelProps> = ({ onClose, initialUs
     }
   };
 
-  const sendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
+const sendMessage = async (e: React.FormEvent) => {
+  e.preventDefault();
+  
+  if (!newMessage.trim() || !selectedUserId || loading) return;
+  
+  setLoading(true);
+  
+  try {
+    console.log('📤 Envoi message à:', selectedUserId); // ✅ DEBUG
     
-    if (!newMessage.trim() || !selectedUserId || loading) return;
+    const response = await api.post('/messages/send', {
+      receiverId: selectedUserId,
+      content: newMessage.trim()
+    });
     
-    setLoading(true);
-    
-    try {
-      const response = await api.post('/messages/send', {
-        receiverId: selectedUserId,
-        content: newMessage.trim()
-      });
-      
-      setMessages([...messages, response.data]);
-      setNewMessage('');
-      loadConversations();
-    } catch (error: any) {
-      console.error('Erreur envoi message:', error);
-      alert(error.response?.data?.error || 'Erreur envoi message');
-    } finally {
-      setLoading(false);
-    }
-  };
+    setMessages([...messages, response.data]);
+    setNewMessage('');
+    loadConversations();
+  } catch (error: any) {
+    console.error('Erreur envoi message:', error);
+    console.error('userId:', selectedUserId); // ✅ DEBUG
+    alert(error.response?.data?.error || 'Erreur envoi message');
+  } finally {
+    setLoading(false);
+  }
+};
 
   const formatTime = (dateString: string) => {
     const date = new Date(dateString);
