@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 import { PrismaClient } from '@prisma/client';
+import { levelService } from '../services/level.service';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -148,44 +149,17 @@ router.get('/profile/:userId', async (req, res) => {
       return res.status(404).json({ error: 'Utilisateur non trouvé' });
     }
 
-    // ✅ Calculer le vrai niveau depuis l'XP
-    const levelProgress = calculateLevelProgress(user.experience);
+    // ✅ Utiliser le vrai levelService pour calculer le niveau
+    const levelProgress = levelService.getCurrentLevelProgress(user.experience);
 
     res.json({
       ...user,
-      level: levelProgress.level // Remplacer le level en DB par le level calculé
+      level: levelProgress.currentLevel // Niveau calculé avec la VRAIE formule
     });
   } catch (error) {
     console.error('Erreur récupération profil:', error);
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });
-
-/**
- * Helper: Calculer la progression de niveau depuis l'XP total
- */
-function calculateLevelProgress(totalXp: number) {
-  let level = 1;
-  let xpForCurrentLevel = 0;
-  let xpForNextLevel = 100;
-
-  while (totalXp >= xpForNextLevel) {
-    level++;
-    xpForCurrentLevel = xpForNextLevel;
-    xpForNextLevel = Math.floor(xpForNextLevel * 1.5);
-  }
-
-  const currentXp = totalXp - xpForCurrentLevel;
-  const xpNeeded = xpForNextLevel - xpForCurrentLevel;
-  const progressPercentage = Math.floor((currentXp / xpNeeded) * 100);
-
-  return {
-    level,
-    currentXp,
-    xpForNextLevel: xpNeeded,
-    progressPercentage,
-    totalXp
-  };
-}
 
 export default router;
