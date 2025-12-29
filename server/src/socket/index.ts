@@ -21,6 +21,7 @@ interface PlayerPosition {
 interface RoomPlayers {
   [roomId: string]: {
     [userId: string]: {
+      userId: string;
       username: string;
       position: PlayerPosition;
       avatar: any;
