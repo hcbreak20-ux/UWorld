@@ -53,6 +53,8 @@ interface AppState {
   setChatInputFocused: (focused: boolean) => void;
 }
 
+const MAX_MESSAGES = 10; // ✅ AJOUTÉ: Limite de messages
+
 export const useStore = create<AppState>((set) => ({
   // Auth
   user: null,
@@ -117,10 +119,15 @@ export const useStore = create<AppState>((set) => ({
       },
     })),
 
+  // ✅ MODIFIÉ: addMessage limite automatiquement à 10 messages
   addMessage: (message) =>
-    set((state) => ({
-      messages: [...state.messages, message],
-    })),
+    set((state) => {
+      const newMessages = [...state.messages, message];
+      // Garder seulement les 10 derniers messages
+      return {
+        messages: newMessages.slice(-MAX_MESSAGES)
+      };
+    }),
 
   clearRoomData: () =>
     set({

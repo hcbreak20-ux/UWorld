@@ -13,10 +13,8 @@ interface UserLevel {
   lastFetched: number;
 }
 
-const MAX_MESSAGES = 10; // ✅ AJOUTÉ: Limite de messages
-
 export const ChatBox: React.FC = () => {
-  const { messages, addMessage, setMessages, user } = useStore();
+  const { messages, addMessage, user } = useStore();
   const [isVisible, setIsVisible] = useState(true);
   const [userLevels, setUserLevels] = useState<Map<string, UserLevel>>(new Map());
 
@@ -102,14 +100,6 @@ export const ChatBox: React.FC = () => {
     return cleanup;
   }, [addMessage]);
 
-  // ✅ NOUVEAU: Limiter à 10 messages max
-  useEffect(() => {
-    if (messages.length > MAX_MESSAGES) {
-      // Garder seulement les 10 derniers
-      setMessages(messages.slice(-MAX_MESSAGES));
-    }
-  }, [messages, setMessages]);
-
   const formatTime = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
@@ -153,8 +143,8 @@ export const ChatBox: React.FC = () => {
               </div>
             )}
             
-            {/* ✅ MODIFIÉ: Afficher seulement les 10 derniers messages */}
-            {messages.slice(-MAX_MESSAGES).map((message, index) => {
+            {/* ✅ CORRIGÉ: Afficher tous les messages (le store limite déjà à 10) */}
+            {messages.map((message, index) => {
               const userLevel = getUserLevel(message);
               
               return (

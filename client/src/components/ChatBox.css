@@ -21,12 +21,12 @@
 
 .chat-messages {
   flex: 1;
-  overflow: hidden; /* ✅ MODIFIÉ: Plus de scroll! */
+  overflow: hidden; /* ✅ Plus de scroll */
   padding: 15px;
   display: flex;
   flex-direction: column;
   gap: 10px;
-  justify-content: flex-end; /* ✅ AJOUTÉ: Messages collés en bas */
+  justify-content: flex-end; /* ✅ Messages collés en bas */
 }
 
 .chat-empty {
@@ -42,7 +42,7 @@
   border-radius: 8px;
   border-left: 3px solid rgba(102, 126, 234, 0.5);
   animation: slideIn 0.3s ease;
-  flex-shrink: 0; /* ✅ AJOUTÉ: Empêcher la compression */
+  flex-shrink: 0; /* ✅ Empêcher la compression */
 }
 
 .chat-message.own-message {
@@ -242,10 +242,10 @@
   }
 }
 
-/* ✅ BOUTON TOGGLE - NOUVEAU STYLE */
+/* ✅ BOUTON TOGGLE - CORRIGÉ */
 .chat-toggle-btn {
   position: absolute;
-  right: -40px; /* ✅ CHANGÉ: À droite au lieu de gauche */
+  right: -40px; /* ✅ À droite du chat */
   top: 50%;
   transform: translateY(-50%);
   background: rgba(99, 102, 241, 0.9);
@@ -253,7 +253,7 @@
   color: white;
   width: 32px;
   height: 64px;
-  border-radius: 0 8px 8px 0; /* ✅ CHANGÉ: Arrondi à droite */
+  border-radius: 0 8px 8px 0; /* ✅ Arrondi à droite */
   cursor: pointer;
   font-size: 1rem;
   display: flex;
@@ -273,14 +273,12 @@
   width: 0 !important;
   min-width: 0 !important;
   max-width: 0 !important;
-  overflow: hidden;
-  border: none;
-  padding: 0;
-  opacity: 0;
+  padding: 0 !important;
+  border: none !important;
 }
 
+/* ✅ FLÈCHE QUAND CACHÉ - Collée au bord droit */
 .chat-box.chat-hidden .chat-toggle-btn {
-  right: 5px; /* ✅ MODIFIÉ: 5mm du bord droit de l'écran */
-  border-radius: 8px 0 0 8px; /* ✅ Arrondi à gauche quand caché */
-  opacity: 1;
+  right: 5px; /* ✅ 5mm du bord droit */
+  border-radius: 8px 0 0 8px; /* ✅ Arrondi à gauche */
 }
