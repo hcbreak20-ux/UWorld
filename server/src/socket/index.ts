@@ -144,6 +144,7 @@ const user = await prisma.user.findUnique({
 
 // Ajouter le joueur avec position par défaut
 roomPlayers[roomId][user.id] = {
+  userId: user.id,
   username: user.username,
   position: { x: 5, y: 5, direction: 'down' },
   avatar: user.avatar,
