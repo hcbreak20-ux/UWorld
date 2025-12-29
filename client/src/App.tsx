@@ -7,7 +7,7 @@ import { useStore } from './store';
 import './styles/global.css';
 import { AdminPanel } from '@/components/AdminPanel';
 import { AvatarCustomizer } from './pages/AvatarCustomizer';
-
+import { MainMenu } from './pages/MainMenu';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated } = useStore();
@@ -36,6 +36,10 @@ const App: React.FC = () => {
             </ProtectedRoute>
           }
         />
+
+        // Ajoute cette route:
+<Route path="/main-menu" element={<MainMenu />} />
+
         ```typescript
         <Route
          path="/admin"

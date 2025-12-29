@@ -22,7 +22,7 @@ export const LoginPage: React.FC = () => {
       const response = await authAPI.login(username, password);
       setUser(response.user);
       setToken(response.token);
-      navigate('/lobby');
+      navigate('/main-menu'); // ✅ MODIFIÉ: Redirige vers le menu principal
     } catch (err: any) {
       setError(err.response?.data?.error || 'Erreur de connexion');
     } finally {
