@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useStore } from '@/store';
+import { api } from '@/services/api';
 import './AvatarMenu.css';
 
 interface AvatarMenuProps {
@@ -7,6 +8,14 @@ interface AvatarMenuProps {
   onLooksClick: () => void;
   onAchievementsClick: () => void;
   onSettingsClick: () => void;
+}
+
+interface LevelProgress {
+  level: number;
+  currentXp: number;
+  xpForNextLevel: number;
+  progressPercentage: number;
+  totalXp: number;
 }
 
 export const AvatarMenu: React.FC<AvatarMenuProps> = ({
@@ -17,7 +26,26 @@ export const AvatarMenu: React.FC<AvatarMenuProps> = ({
 }) => {
   const { user } = useStore();
   const [showMenu, setShowMenu] = useState(false);
+  const [levelProgress, setLevelProgress] = useState<LevelProgress | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  // ✅ Charger le vrai niveau depuis l'API
+  useEffect(() => {
+    const fetchLevel = async () => {
+      try {
+        const response = await api.get('/level/progress');
+        setLevelProgress(response.data);
+      } catch (error) {
+        console.error('Erreur chargement niveau:', error);
+      }
+    };
+
+    fetchLevel();
+    
+    // Rafraîchir toutes les 30 secondes (synchronisé avec ExperienceBar)
+    const interval = setInterval(fetchLevel, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Fermer le menu si on clique en dehors
   useEffect(() => {
@@ -43,6 +71,9 @@ export const AvatarMenu: React.FC<AvatarMenuProps> = ({
     setShowMenu(false);
   };
 
+  // ✅ Utiliser le vrai niveau de l'API ou fallback sur user.level
+  const displayLevel = levelProgress?.level ?? user.level;
+
   return (
     <div className="avatar-menu-container" ref={menuRef}>
       {/* Avatar cliquable */}
@@ -56,7 +87,7 @@ export const AvatarMenu: React.FC<AvatarMenuProps> = ({
         </div>
         <div className="avatar-menu-info">
           <span className="avatar-menu-username">{user.username}</span>
-          <span className="avatar-menu-level">Niveau {user.level}</span>
+          <span className="avatar-menu-level">Niveau {displayLevel}</span>
         </div>
       </div>
 
