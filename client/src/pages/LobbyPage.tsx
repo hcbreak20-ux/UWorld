@@ -11,6 +11,7 @@ import type { Room } from '@/types';
 import './LobbyPage.css';
 import { ExperienceBar } from '@/components/ExperienceBar';
 import { ChatInput } from '@/components/ChatInput';
+import { MessagesPanel } from '@/components/MessagesPanel';
 
 export const LobbyPage: React.FC = () => {
   const navigate = useNavigate();
@@ -20,6 +21,8 @@ export const LobbyPage: React.FC = () => {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [showRoomList, setShowRoomList] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [showMessages, setShowMessages] = useState(false);
+  const [messageUserId, setMessageUserId] = useState<string | null>(null);
 
   useEffect(() => {
     const initializeApp = async () => {
@@ -61,6 +64,20 @@ export const LobbyPage: React.FC = () => {
       socketService.disconnect();
     };
   }, []);
+
+  // ✅✅ AJOUTER CE USEEFFECT ICI:
+useEffect(() => {
+  const handleOpenMessages = (e: any) => {
+    setMessageUserId(e.detail.userId);
+    setShowMessages(true);
+  };
+  
+  window.addEventListener('openMessages', handleOpenMessages);
+  
+  return () => {
+    window.removeEventListener('openMessages', handleOpenMessages);
+  };
+}, []);
 
   useEffect(() => {
     if (!loading && currentRoom && !gameRef.current) {
@@ -118,10 +135,15 @@ export const LobbyPage: React.FC = () => {
             <span className="currency-amount">{user?.gems.toLocaleString() || 0}</span>
             <span className="currency-label">uNuggets</span>
           </div>
+
+                <button onClick={() => setShowMessages(true)}>
+                💬 Messages
+                </button>
           
           <button onClick={handleLogout}>🚪 Déconnexion</button>
         </div>
       </div>
+
 
       <div className="lobby-content">
         {/* Panneau gauche avec liste des salles */}
@@ -151,6 +173,17 @@ export const LobbyPage: React.FC = () => {
 
       {/* Nouvelle barre de chat */}
       <ChatInput />
+
+      {showMessages && (
+  <MessagesPanel
+    onClose={() => {
+      setShowMessages(false);
+      setMessageUserId(null);
+    }}
+    initialUserId={messageUserId}
+  />
+)}
+
     </div>
   );
 };

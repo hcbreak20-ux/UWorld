@@ -513,183 +513,349 @@ this.input.on('pointerup', (pointer: Phaser.Input.Pointer) => {
     this.placementGhost.setRotation((this.placementRotation * Math.PI) / 180);
   }
 
-/**
-   * Afficher le profil d'un joueur
-   */
-  private async showPlayerProfile(userId: string, username: string, level: number, screenX: number, screenY: number) {
-    console.log('Afficher profil:', username);
+  /**
+ * ✅ NOUVELLE FONCTION - Afficher le profil amélioré d'un joueur
+ * Position: Bas droite de l'écran
+ * Affiche: Sprite du personnage + 2 badges + bouton message
+ */
+private async showPlayerProfile(userId: string, username: string, level: number, screenX: number, screenY: number) {
+  console.log('Afficher profil amélioré:', username);
+  
+  // Fermer le profil existant
+  this.closePlayerProfile();
+
+  // ✅ Récupérer le niveau ET les badges depuis l'API
+  let actualLevel = level;
+  let userBadges: any[] = [];
+  let activeBadgeId: string | null = null;
+  
+  try {
+    // Charger le profil complet
+    const response = await api.get(`/users/profile/${userId}`);
+    actualLevel = response.data.level;
+    activeBadgeId = response.data.activeBadgeId;
     
-    // Fermer le profil existant
+    // Charger les badges de l'utilisateur
+    const badgesResponse = await api.get(`/badges/user/${userId}`);
+    userBadges = badgesResponse.data;
+    
+    console.log('🎯 Profil chargé:', { actualLevel, activeBadgeId, badgesCount: userBadges.length });
+  } catch (error) {
+    console.error('❌ Erreur chargement profil:', error);
+  }
+
+  // Créer l'overlay
+  const overlay = document.createElement('div');
+  overlay.id = 'player-profile-overlay';
+  overlay.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.3);
+    z-index: 9999;
+    backdrop-filter: blur(2px);
+  `;
+  document.body.appendChild(overlay);
+
+  // ✅ Créer le profil en BAS À DROITE
+  const profileDiv = document.createElement('div');
+  profileDiv.id = 'player-profile';
+  profileDiv.style.cssText = `
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    background: linear-gradient(180deg, rgba(30, 30, 35, 0.98) 0%, rgba(20, 20, 25, 0.98) 100%);
+    border: 2px solid rgba(102, 126, 234, 0.4);
+    border-radius: 20px;
+    padding: 20px;
+    width: 320px;
+    z-index: 10000;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+    animation: profileSlideIn 0.3s ease-out;
+    font-family: 'Arial', sans-serif;
+  `;
+
+  // ✅ Animation CSS
+  const style = document.createElement('style');
+  style.textContent = `
+    @keyframes profileSlideIn {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+  `;
+  document.head.appendChild(style);
+
+  // Bouton X
+  const closeBtn = document.createElement('button');
+  closeBtn.textContent = '✕';
+  closeBtn.style.cssText = `
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 28px;
+    height: 28px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    color: white;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    line-height: 1;
+    z-index: 10;
+  `;
+  closeBtn.onclick = (e) => {
+    e.stopPropagation();
     this.closePlayerProfile();
+  };
+  closeBtn.onmouseenter = () => {
+    closeBtn.style.background = 'rgba(255, 60, 60, 0.8)';
+    closeBtn.style.transform = 'scale(1.1)';
+  };
+  closeBtn.onmouseleave = () => {
+    closeBtn.style.background = 'rgba(255, 255, 255, 0.1)';
+    closeBtn.style.transform = 'scale(1)';
+  };
+  profileDiv.appendChild(closeBtn);
 
-    // ✅ NOUVEAU: Récupérer le niveau actuel depuis l'API
-    let actualLevel = level;
-    const store = useStore.getState();
+  // ✅ SPRITE DU PERSONNAGE (Canvas)
+  const spriteSection = document.createElement('div');
+  spriteSection.style.cssText = `
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 16px;
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 12px;
+  `;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = 64;
+  canvas.height = 96;
+  canvas.style.cssText = `
+    image-rendering: pixelated;
+    width: 128px;
+    height: 192px;
+  `;
+  
+  // Dessiner le sprite du personnage
+  const ctx = canvas.getContext('2d');
+  if (ctx && this.textures.exists('character_8dir')) {
+    const texture = this.textures.get('character_8dir').getSourceImage() as HTMLImageElement;
+    // Frame 0 = idle south
+    ctx.drawImage(texture, 0, 0, 32, 48, 16, 24, 32, 48);
     
-// Pour N'IMPORTE QUEL joueur
-try {
-  const response = await api.get(`/users/profile/${userId}`);
-  actualLevel = response.data.level;
-} catch (error) {
-  console.error('❌ Erreur chargement niveau:', error);
-}
+    // Appliquer la couleur du personnage (si disponible)
+    const playerData = this.players.get(userId);
+    if (playerData) {
+      const shirtColor = playerData.sprite.getData('avatarShirtColor');
+      if (shirtColor) {
+        ctx.globalCompositeOperation = 'multiply';
+        ctx.fillStyle = shirtColor;
+        ctx.fillRect(16, 24, 32, 48);
+        ctx.globalCompositeOperation = 'source-over';
+      }
+    }
+  } else {
+    // Fallback: afficher un emoji
+    ctx.font = '48px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('👤', 32, 48);
+  }
+  
+  spriteSection.appendChild(canvas);
+  profileDiv.appendChild(spriteSection);
 
-    // Créer l'overlay
-    const overlay = document.createElement('div');
-    overlay.id = 'player-profile-overlay';
-    overlay.style.cssText = `
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0, 0, 0, 0.3);
-      z-index: 9999;
-      backdrop-filter: blur(2px);
-    `;
-    document.body.appendChild(overlay);
+  // Nom d'utilisateur
+  const nameDiv = document.createElement('div');
+  nameDiv.textContent = username;
+  nameDiv.style.cssText = `
+    color: #FFD700;
+    font-size: 20px;
+    font-weight: 700;
+    text-align: center;
+    margin-bottom: 8px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+  `;
+  profileDiv.appendChild(nameDiv);
 
-    // Créer le menu de profil
-    const profileDiv = document.createElement('div');
-    profileDiv.id = 'player-profile';
-    profileDiv.style.cssText = `
-      position: fixed;
-      left: ${screenX + 20}px;
-      top: ${screenY}px;
-      background: rgba(30, 30, 35, 0.98);
-      border: 2px solid rgba(102, 126, 234, 0.4);
-      border-radius: 16px;
-      padding: 16px;
-      min-width: 200px;
-      z-index: 10000;
-      box-shadow: 0 12px 48px rgba(0, 0, 0, 0.6);
-      animation: menuSlideIn 0.25s ease-out;
-      font-family: 'Arial', sans-serif;
-    `;
+  // Niveau
+  const levelDiv = document.createElement('div');
+  levelDiv.innerHTML = `<span style="color: rgba(255, 255, 255, 0.7);">Niveau:</span> <span style="color: #667eea; font-weight: 600;">${actualLevel}</span>`;
+  levelDiv.style.cssText = `
+    font-size: 14px;
+    text-align: center;
+    margin-bottom: 16px;
+  `;
+  profileDiv.appendChild(levelDiv);
 
-    // Bouton X
-    const closeBtn = document.createElement('button');
-    closeBtn.textContent = '✕';
-    closeBtn.style.cssText = `
-      position: absolute;
-      top: 8px;
-      right: 8px;
-      width: 24px;
-      height: 24px;
-      background: rgba(255, 255, 255, 0.1);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      border-radius: 6px;
-      color: white;
-      font-size: 14px;
-      font-weight: bold;
-      cursor: pointer;
-      transition: all 0.2s;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 0;
-      line-height: 1;
-    `;
-    closeBtn.onclick = (e) => {
-      e.stopPropagation();
-      this.closePlayerProfile();
-    };
-    closeBtn.onmouseenter = () => {
-      closeBtn.style.background = 'rgba(255, 60, 60, 0.8)';
-      closeBtn.style.transform = 'scale(1.1)';
-    };
-    closeBtn.onmouseleave = () => {
-      closeBtn.style.background = 'rgba(255, 255, 255, 0.1)';
-      closeBtn.style.transform = 'scale(1)';
-    };
-    profileDiv.appendChild(closeBtn);
-
-    // Avatar (emoji)
-    const avatar = document.createElement('div');
-    avatar.textContent = '👤';
-    avatar.style.cssText = `
-      font-size: 48px;
-      text-align: center;
-      margin-bottom: 12px;
-    `;
-    profileDiv.appendChild(avatar);
-
-    // Nom d'utilisateur
-    const nameDiv = document.createElement('div');
-    nameDiv.textContent = username;
-    nameDiv.style.cssText = `
-      color: #FFD700;
-      font-size: 18px;
-      font-weight: 600;
-      text-align: center;
-      margin-bottom: 8px;
-    `;
-    profileDiv.appendChild(nameDiv);
-
-    // ✅ MODIFIÉ: Utiliser actualLevel au lieu de level
-    const levelDiv = document.createElement('div');
-    levelDiv.innerHTML = `<span style="color: rgba(255, 255, 255, 0.7);">Niveau:</span> <span style="color: #667eea; font-weight: 600;">${actualLevel}</span>`;
-    levelDiv.style.cssText = `
-      font-size: 14px;
-      text-align: center;
+  // ✅ BADGES (2 badges actifs ou les 2 derniers débloqués)
+  if (userBadges.length > 0) {
+    const badgesSection = document.createElement('div');
+    badgesSection.style.cssText = `
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 12px;
+      padding: 12px;
       margin-bottom: 16px;
     `;
-    profileDiv.appendChild(levelDiv);
 
-    // Ligne de séparation
-    const separator = document.createElement('div');
-    separator.style.cssText = `
-      height: 1px;
-      background: rgba(255, 255, 255, 0.1);
-      margin: 12px 0;
+    const badgesTitle = document.createElement('div');
+    badgesTitle.textContent = '🏆 Badges';
+    badgesTitle.style.cssText = `
+      color: #FFD700;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+      text-align: center;
     `;
-    profileDiv.appendChild(separator);
+    badgesSection.appendChild(badgesTitle);
 
-    // Bouton Envoyer Message (futur)
+    const badgesGrid = document.createElement('div');
+    badgesGrid.style.cssText = `
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+    `;
+
+    // Afficher le badge actif en premier, puis un autre
+    const activeBadge = userBadges.find(ub => ub.badgeId === activeBadgeId);
+    const otherBadge = userBadges.find(ub => ub.badgeId !== activeBadgeId);
+    
+    const badgesToShow = [activeBadge, otherBadge].filter(Boolean).slice(0, 2);
+    
+    badgesToShow.forEach((userBadge: any) => {
+      const badgeDiv = document.createElement('div');
+      badgeDiv.style.cssText = `
+        background: linear-gradient(180deg, #2d2d2d 0%, #1a1a1a 100%);
+        border: 2px solid ${userBadge.badgeId === activeBadgeId ? '#FFD700' : '#4a9eff'};
+        border-radius: 12px;
+        padding: 8px;
+        text-align: center;
+        flex: 1;
+        max-width: 100px;
+        transition: all 0.2s;
+        cursor: pointer;
+        ${userBadge.badgeId === activeBadgeId ? 'box-shadow: 0 0 15px rgba(255, 215, 0, 0.4);' : ''}
+      `;
+      
+      badgeDiv.onmouseenter = () => {
+        badgeDiv.style.transform = 'translateY(-2px)';
+        badgeDiv.style.boxShadow = '0 4px 12px rgba(74, 158, 255, 0.4)';
+      };
+      badgeDiv.onmouseleave = () => {
+        badgeDiv.style.transform = 'translateY(0)';
+        badgeDiv.style.boxShadow = userBadge.badgeId === activeBadgeId ? '0 0 15px rgba(255, 215, 0, 0.4)' : 'none';
+      };
+
+      const badgeIcon = document.createElement('div');
+      badgeIcon.textContent = userBadge.badge.icon;
+      badgeIcon.style.cssText = `
+        font-size: 32px;
+        margin-bottom: 4px;
+      `;
+      badgeDiv.appendChild(badgeIcon);
+
+      const badgeName = document.createElement('div');
+      badgeName.textContent = userBadge.badge.name;
+      badgeName.style.cssText = `
+        color: white;
+        font-size: 10px;
+        font-weight: 600;
+        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+      `;
+      badgeDiv.appendChild(badgeName);
+
+      badgesGrid.appendChild(badgeDiv);
+    });
+
+    badgesSection.appendChild(badgesGrid);
+    profileDiv.appendChild(badgesSection);
+  }
+
+  // Ligne de séparation
+  const separator = document.createElement('div');
+  separator.style.cssText = `
+    height: 1px;
+    background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.2) 50%, transparent 100%);
+    margin: 16px 0;
+  `;
+  profileDiv.appendChild(separator);
+
+  // ✅ Bouton Message Privé (fonctionnel)
+  const store = useStore.getState();
+  const currentUserId = store.user?.id;
+  
+  // Ne pas afficher le bouton si c'est notre propre profil
+  if (userId !== currentUserId) {
     const messageBtn = document.createElement('button');
-    messageBtn.innerHTML = `💬 Envoyer message`;
+    messageBtn.innerHTML = `💬 Message privé`;
     messageBtn.style.cssText = `
       width: 100%;
-      padding: 10px 14px;
-      margin: 4px 0;
-      background: rgba(74, 144, 226, 0.2);
-      border: 1px solid rgba(74, 144, 226, 0.4);
-      border-radius: 10px;
+      padding: 12px 16px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border: none;
+      border-radius: 12px;
       color: white;
-      font-size: 13px;
-      font-weight: 500;
+      font-size: 14px;
+      font-weight: 600;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: all 0.3s;
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
     `;
     messageBtn.onclick = () => {
-      alert('Fonctionnalité à venir!');
+      // Fermer le profil
+      this.closePlayerProfile();
+      
+      // ✅ Émettre un événement pour ouvrir la messagerie
+      window.dispatchEvent(new CustomEvent('openMessages', { 
+        detail: { userId, username }
+      }));
     };
     messageBtn.onmouseenter = () => {
-      messageBtn.style.background = 'rgba(74, 144, 226, 0.35)';
-      messageBtn.style.transform = 'translateX(3px)';
+      messageBtn.style.transform = 'translateY(-2px)';
+      messageBtn.style.boxShadow = '0 6px 20px rgba(102, 126, 234, 0.5)';
     };
     messageBtn.onmouseleave = () => {
-      messageBtn.style.background = 'rgba(74, 144, 226, 0.2)';
-      messageBtn.style.transform = 'translateX(0)';
+      messageBtn.style.transform = 'translateY(0)';
+      messageBtn.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.3)';
     };
     profileDiv.appendChild(messageBtn);
-
-    document.body.appendChild(profileDiv);
-
-    // Fermer en cliquant sur l'overlay
-    setTimeout(() => {
-      overlay.addEventListener('click', () => {
-        this.closePlayerProfile();
-      });
-    }, 100);
   }
 
-  private closePlayerProfile() {
-    const profile = document.getElementById('player-profile');
-    const overlay = document.getElementById('player-profile-overlay');
-    if (profile) profile.remove();
-    if (overlay) overlay.remove();
-  }
+  document.body.appendChild(profileDiv);
+
+  // Fermer en cliquant sur l'overlay
+  setTimeout(() => {
+    overlay.addEventListener('click', () => {
+      this.closePlayerProfile();
+    });
+  }, 100);
+}
+
+private closePlayerProfile() {
+  const profile = document.getElementById('player-profile');
+  const overlay = document.getElementById('player-profile-overlay');
+  if (profile) profile.remove();
+  if (overlay) overlay.remove();
+}
+
 
   /**
    * Afficher le menu contextuel pour un meuble

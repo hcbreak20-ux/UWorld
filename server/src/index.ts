@@ -11,6 +11,7 @@ import questRoutes from './routes/quest.routes';
 import levelRoutes from './routes/level.routes';
 import badgeRoutes from './routes/badge.routes';
 import userRoutes from './routes/user.routes';
+import messageRoutes from './routes/message.routes';
 
 const app = express();
 const server = http.createServer(app);
@@ -35,6 +36,7 @@ app.use('/api/quests', questRoutes);
 app.use('/api/level', levelRoutes);
 app.use('/api/badges', badgeRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/messages', messageRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
