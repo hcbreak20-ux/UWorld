@@ -526,15 +526,12 @@ this.input.on('pointerup', (pointer: Phaser.Input.Pointer) => {
     let actualLevel = level;
     const store = useStore.getState();
     
-// Si c'est le profil de l'utilisateur actuel, récupérer le vrai niveau
-if (userId === store.user?.id) {
-  try {
-    const response = await api.get('/level/progress');
-    actualLevel = response.data.level;
-    console.log('🎯 Niveau récupéré:', actualLevel);
-  } catch (error) {
-    console.error('❌ Erreur chargement niveau:', error);
-  }
+// Pour N'IMPORTE QUEL joueur
+try {
+  const response = await api.get(`/users/profile/${userId}`);
+  actualLevel = response.data.level;
+} catch (error) {
+  console.error('❌ Erreur chargement niveau:', error);
 }
 
     // Créer l'overlay
