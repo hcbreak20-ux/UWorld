@@ -242,10 +242,10 @@
   }
 }
 
-/* ✅ BOUTON TOGGLE - CORRIGÉ */
+/* ✅ BOUTON TOGGLE - VISIBLE À L'INTÉRIEUR */
 .chat-toggle-btn {
   position: absolute;
-  right: -40px; /* ✅ À droite du chat */
+  right: 8px; /* ✅ CHANGÉ: À l'intérieur du chat, côté droit */
   top: 50%;
   transform: translateY(-50%);
   background: rgba(99, 102, 241, 0.9);
@@ -253,19 +253,19 @@
   color: white;
   width: 32px;
   height: 64px;
-  border-radius: 0 8px 8px 0; /* ✅ Arrondi à droite */
+  border-radius: 8px; /* ✅ CHANGÉ: Arrondi des deux côtés */
   cursor: pointer;
   font-size: 1rem;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all 0.3s ease;
-  z-index: 10;
+  z-index: 1000; /* ✅ AUGMENTÉ: Au-dessus de tout */
 }
 
 .chat-toggle-btn:hover {
   background: rgba(99, 102, 241, 1);
-  right: -45px;
+  transform: translateY(-50%) scale(1.05);
 }
 
 /* ✅ CHAT CACHÉ - COMPLÈTEMENT */
@@ -275,10 +275,12 @@
   max-width: 0 !important;
   padding: 0 !important;
   border: none !important;
+  overflow: visible !important; /* ✅ AJOUTÉ: Pour voir la flèche */
 }
 
-/* ✅ FLÈCHE QUAND CACHÉ - Collée au bord droit */
+/* ✅ FLÈCHE QUAND CACHÉ - Fixed au bord droit de l'écran */
 .chat-box.chat-hidden .chat-toggle-btn {
-  right: 5px; /* ✅ 5mm du bord droit */
-  border-radius: 8px 0 0 8px; /* ✅ Arrondi à gauche */
+  position: fixed; /* ✅ CHANGÉ: Fixed au lieu d'absolute */
+  right: 5px; /* ✅ 5px du bord droit de l'écran */
+  border-radius: 8px 0 0 8px; /* ✅ Arrondi à gauche quand caché */
 }
