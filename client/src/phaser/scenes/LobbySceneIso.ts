@@ -39,6 +39,7 @@ export class LobbySceneIso extends Phaser.Scene {
   private cameraStartX = 0;
   private cameraStartY = 0;
   private clickedOnSprite = false;
+  private isHoveringSprite = false;
 
 
 
@@ -197,6 +198,16 @@ export class LobbySceneIso extends Phaser.Scene {
         pointer.y
       );
     }, this);
+
+        // ✅✅✅ AJOUTER CES 8 LIGNES ICI:
+    this.player.on('pointerover', () => {
+      this.isHoveringSprite = true;
+    }, this);
+
+    this.player.on('pointerout', () => {
+      this.isHoveringSprite = false;
+    }, this);
+    // ✅✅✅ FIN DE L'AJOUT
     
     // Nom du joueur (CACHÉ)
     this.playerNameText = this.add.text(isoPos.x, isoPos.y - 60, store.user?.username || 'Player', {
@@ -242,16 +253,25 @@ this.input.on('pointerup', (pointer: Phaser.Input.Pointer) => {
     this.input.setDefaultCursor('default');
   }
   
-  // ✅ Déplacer SEULEMENT si ce n'était PAS un drag
-  if (!wasDragging && pointer.leftButtonReleased() && !this.isMoving) {
-    const placementMode = useStore.getState().placementMode;
-    if (!placementMode.active) {
-      this.handleMouseClick(pointer.worldX, pointer.worldY);
-    }
+// ✅ Déplacer SEULEMENT si ce n'était PAS un drag ET pas un clic sur sprite
+if (!wasDragging && pointer.leftButtonReleased() && !this.isMoving && !this.clickedOnSprite) {
+  const placementMode = useStore.getState().placementMode;
+  if (!placementMode.active) {
+    this.handleMouseClick(pointer.worldX, pointer.worldY);
   }
+}
+
+// ✅ AJOUTER CETTE LIGNE APRÈS LE } :
+this.clickedOnSprite = false;
 });
 
 this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
+        if (this.isHoveringSprite) {
+        if (this.tileHighlight) {
+          this.tileHighlight.clear();
+        }
+        return;
+      }
   // ✅ Mettre à jour le highlight de tuile
   this.updateTileHighlight(pointer.worldX, pointer.worldY);
   
@@ -281,20 +301,6 @@ this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
   }
 });
 
-this.input.on('pointerup', (pointer: Phaser.Input.Pointer) => {
-  if (this.isDraggingCamera) {
-    // C'était un drag: arrêter le drag
-    this.isDraggingCamera = false;
-    this.input.setDefaultCursor('default');
-} else if (pointer.leftButtonReleased() && !this.isMoving && !this.clickedOnSprite) { 
-    // C'était un simple clic: déplacer le personnage
-    const placementMode = useStore.getState().placementMode;
-    if (!placementMode.active) {
-      this.handleMouseClick(pointer.worldX, pointer.worldY);
-    }
-  }
-  this.clickedOnSprite = false;
-});
 
     // **NOUVEAU: Contrôles de zoom avec la molette**
     this.input.on('wheel', (pointer: any, gameObjects: any, deltaX: number, deltaY: number) => {
@@ -1467,7 +1473,15 @@ private closePlayerProfile() {
       }
       await this.showPlayerProfile(userId, player.username, player.level, pointer.x, pointer.y);
     }, this);
-    
+
+    sprite.on('pointerover', () => {
+      this.isHoveringSprite = true;
+    }, this);
+
+    sprite.on('pointerout', () => {
+      this.isHoveringSprite = false;
+    }, this);
+   
     // Nom du joueur (CACHÉ - on le garde pour ne pas casser le code)
     const nameText = this.add.text(isoPos.x, isoPos.y - 60, player.username, {
       fontSize: '14px',
