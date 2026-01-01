@@ -5,6 +5,13 @@ import { PrismaClient } from '@prisma/client';
 const router = Router();
 const prisma = new PrismaClient();
 
+// ✅ NOUVEAU: Fonction pour émettre notification via Socket.IO
+let io: any = null;
+
+export const setSocketIO = (socketIO: any) => {
+  io = socketIO;
+};
+
 /**
  * GET /api/messages/conversations
  * Récupérer toutes les conversations de l'utilisateur
@@ -199,8 +206,22 @@ router.post('/send', authMiddleware, async (req: AuthRequest, res) => {
       }
     });
 
-    // TODO: Émettre un événement socket pour notification temps réel
-    // socketService.emitToUser(receiverId, 'private_message', message);
+    // ✅ NOUVEAU: Émettre notification Socket.IO au destinataire
+    if (io) {
+      // Trouver le socket du destinataire
+      const sockets = await io.fetchSockets();
+      const receiverSocket = sockets.find((s: any) => s.userId === receiverId);
+      
+      if (receiverSocket) {
+        receiverSocket.emit('private_message_notification', {
+          messageId: message.id,
+          from: message.sender,
+          content: message.content,
+          createdAt: message.createdAt
+        });
+        console.log(`📬 Notification envoyée à ${receiver.username}`);
+      }
+    }
 
     res.json(message);
   } catch (error) {

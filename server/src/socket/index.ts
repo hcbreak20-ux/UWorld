@@ -2,7 +2,8 @@ import { Server as SocketServer, Socket } from 'socket.io';
 import { Server as HTTPServer } from 'http';
 import { verifyToken } from '../utils/jwt';
 import { PrismaClient } from '@prisma/client';
- import { questService } from '../services/quest.service'; // ← TEMPORAIREMENT DÉSACTIVÉ
+import { questService } from '../services/quest.service'; // ← TEMPORAIREMENT DÉSACTIVÉ
+import { setSocketIO } from '../routes/message.routes'; // ✅ AJOUTER CETTE LIGNE
 
 const prisma = new PrismaClient();
 
@@ -374,6 +375,8 @@ socket.to(roomId).emit('player_joined', {
       }
     });
   });
+
+  setSocketIO(io);
 
   return io;
 };

@@ -273,3 +273,65 @@
     height: 80px;
   }
 }
+
+/* ============================================
+   BADGE DE NOTIFICATION
+   À ajouter dans LobbyPage.css
+   ============================================ */
+
+/* Badge rouge sur le bouton Messages */
+.unread-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: linear-gradient(135deg, #ff4757 0%, #e84118 100%);
+  color: white;
+  font-size: 11px;
+  font-weight: bold;
+  padding: 3px 6px;
+  border-radius: 10px;
+  min-width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(255, 71, 87, 0.6);
+  animation: badgePulse 2s ease-in-out infinite;
+  border: 2px solid #1a1a2e;
+}
+
+@keyframes badgePulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 2px 8px rgba(255, 71, 87, 0.6);
+  }
+  50% {
+    transform: scale(1.1);
+    box-shadow: 0 4px 16px rgba(255, 71, 87, 0.8);
+  }
+}
+
+/* Style pour le bouton Messages */
+.messages-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Animation quand on reçoit un nouveau message */
+@keyframes buttonShake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-4px);
+  }
+  75% {
+    transform: translateX(4px);
+  }
+}
+
+.messages-btn.new-message {
+  animation: buttonShake 0.5s ease-in-out;
+}
