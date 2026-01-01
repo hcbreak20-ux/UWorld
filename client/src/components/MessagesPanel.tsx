@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { api } from '@/services/api';
 import { useStore } from '@/store';
 import { socketService } from '@/services/socket';
@@ -43,6 +43,14 @@ export const MessagesPanel: React.FC<MessagesPanelProps> = ({ onClose, initialUs
   const [messages, setMessages] = useState<PrivateMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(false);
+  
+  // ✅ BUG 5 FIX: Référence pour auto-scroll
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // ✅ BUG 5 FIX: Fonction pour scroller en bas
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
 
   // Charger les conversations
   useEffect(() => {
@@ -56,7 +64,12 @@ export const MessagesPanel: React.FC<MessagesPanelProps> = ({ onClose, initialUs
     }
   }, [selectedUserId]);
 
-  // ✅ NOUVEAU: Écouter les nouveaux messages en temps réel
+  // ✅ BUG 5 FIX: Scroller quand les messages changent
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  // Écouter les nouveaux messages en temps réel
   useEffect(() => {
     const handleNewMessage = (data: {
       messageId: string;
@@ -121,6 +134,8 @@ export const MessagesPanel: React.FC<MessagesPanelProps> = ({ onClose, initialUs
       setMessages([...messages, response.data]);
       setNewMessage('');
       loadConversations();
+      // ✅ BUG 5 FIX: Scroller après envoi
+      setTimeout(scrollToBottom, 100);
     } catch (error: any) {
       console.error('Erreur envoi message:', error);
       alert(error.response?.data?.error || 'Erreur envoi message');
@@ -198,7 +213,6 @@ export const MessagesPanel: React.FC<MessagesPanelProps> = ({ onClose, initialUs
                 {/* Messages */}
                 <div className="messages-list">
                   {messages.map((msg) => {
-                    // ✅ BUG FIX 2: Corriger la logique sent/received
                     const isSentByMe = msg.senderId === user?.id;
                     
                     return (
@@ -213,6 +227,8 @@ export const MessagesPanel: React.FC<MessagesPanelProps> = ({ onClose, initialUs
                       </div>
                     );
                   })}
+                  {/* ✅ BUG 5 FIX: Élément invisible pour scroller */}
+                  <div ref={messagesEndRef} />
                 </div>
 
                 {/* Input */}

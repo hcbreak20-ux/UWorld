@@ -38,6 +38,7 @@ export class LobbySceneIso extends Phaser.Scene {
   private dragStartY = 0;
   private cameraStartX = 0;
   private cameraStartY = 0;
+  private clickedOnSprite = false;
 
 
 
@@ -285,13 +286,14 @@ this.input.on('pointerup', (pointer: Phaser.Input.Pointer) => {
     // C'était un drag: arrêter le drag
     this.isDraggingCamera = false;
     this.input.setDefaultCursor('default');
-  } else if (pointer.leftButtonReleased() && !this.isMoving) {
+} else if (pointer.leftButtonReleased() && !this.isMoving && !this.clickedOnSprite) { 
     // C'était un simple clic: déplacer le personnage
     const placementMode = useStore.getState().placementMode;
     if (!placementMode.active) {
       this.handleMouseClick(pointer.worldX, pointer.worldY);
     }
   }
+  this.clickedOnSprite = false;
 });
 
     // **NOUVEAU: Contrôles de zoom avec la molette**
@@ -1459,6 +1461,7 @@ private closePlayerProfile() {
 // Rendre le sprite cliquable pour afficher le profil
     sprite.setInteractive({ cursor: 'pointer' });
     sprite.on('pointerdown', async (pointer: Phaser.Input.Pointer) => {
+      this.clickedOnSprite = true;
       if (pointer.event) {
         pointer.event.stopPropagation();
       }
