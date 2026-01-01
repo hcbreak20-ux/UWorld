@@ -44,32 +44,26 @@ export const MessagesPanel: React.FC<MessagesPanelProps> = ({ onClose, initialUs
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(false);
   
-  // ✅ BUG 5 FIX: Référence pour auto-scroll
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // ✅ BUG 5 FIX: Fonction pour scroller en bas
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  // Charger les conversations
   useEffect(() => {
     loadConversations();
   }, []);
 
-  // Charger les messages d'une conversation
   useEffect(() => {
     if (selectedUserId) {
       loadMessages(selectedUserId);
     }
   }, [selectedUserId]);
 
-  // ✅ BUG 5 FIX: Scroller quand les messages changent
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
 
-  // Écouter les nouveaux messages en temps réel
   useEffect(() => {
     const handleNewMessage = (data: {
       messageId: string;
@@ -79,12 +73,10 @@ export const MessagesPanel: React.FC<MessagesPanelProps> = ({ onClose, initialUs
     }) => {
       console.log('📩 Nouveau message reçu dans MessagesPanel:', data);
       
-      // Si on est dans la conversation avec cet utilisateur, recharger les messages
       if (selectedUserId === data.from.id) {
         loadMessages(data.from.id);
       }
       
-      // Rafraîchir les conversations pour mettre à jour le dernier message
       loadConversations();
     };
 
@@ -134,7 +126,6 @@ export const MessagesPanel: React.FC<MessagesPanelProps> = ({ onClose, initialUs
       setMessages([...messages, response.data]);
       setNewMessage('');
       loadConversations();
-      // ✅ BUG 5 FIX: Scroller après envoi
       setTimeout(scrollToBottom, 100);
     } catch (error: any) {
       console.error('Erreur envoi message:', error);
@@ -213,12 +204,14 @@ export const MessagesPanel: React.FC<MessagesPanelProps> = ({ onClose, initialUs
                 {/* Messages */}
                 <div className="messages-list">
                   {messages.map((msg) => {
+                    // ✅ FIX INVERSÉ: Messages ENVOYÉS par moi = GAUCHE (received)
+                    // Messages REÇUS = DROITE (sent)
                     const isSentByMe = msg.senderId === user?.id;
                     
                     return (
                       <div
                         key={msg.id}
-                        className={`message-item ${isSentByMe ? 'sent' : 'received'}`}
+                        className={`message-item ${isSentByMe ? 'received' : 'sent'}`}
                       >
                         <div className="message-bubble">
                           <div className="message-content">{msg.content}</div>
@@ -227,7 +220,6 @@ export const MessagesPanel: React.FC<MessagesPanelProps> = ({ onClose, initialUs
                       </div>
                     );
                   })}
-                  {/* ✅ BUG 5 FIX: Élément invisible pour scroller */}
                   <div ref={messagesEndRef} />
                 </div>
 

@@ -1,6 +1,6 @@
 /* ============================================
    MESSAGES PANEL - Boîte de réception
-   ✅ FIX BUG 1: pointer-events pour ne pas bloquer Phaser
+   ✅ ORDRE CORRECT: Envoyés = gauche violet, Reçus = droite gris
    ============================================ */
 
 .messages-panel-overlay {
@@ -16,7 +16,6 @@
   justify-content: center;
   z-index: 10000;
   animation: fadeIn 0.3s ease;
-  /* ✅ FIX: Ne pas bloquer les clics sur le canvas Phaser en dessous */
   pointer-events: none;
 }
 
@@ -41,7 +40,6 @@
   flex-direction: column;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
   animation: slideUp 0.3s ease;
-  /* ✅ FIX: Réactiver les clics sur le panel lui-même */
   pointer-events: auto;
 }
 
@@ -258,14 +256,14 @@
   display: flex;
 }
 
-/* ✅ FIX BUG 2: Messages ENVOYÉS par moi = à droite = violet */
-.message-item.sent {
-  justify-content: flex-end;
-}
-
-/* ✅ FIX BUG 2: Messages REÇUS = à gauche = gris */
+/* ✅ ORDRE CORRECT: Messages ENVOYÉS (received) = à GAUCHE = VIOLET */
 .message-item.received {
   justify-content: flex-start;
+}
+
+/* ✅ ORDRE CORRECT: Messages REÇUS (sent) = à DROITE = GRIS */
+.message-item.sent {
+  justify-content: flex-end;
 }
 
 .message-bubble {
@@ -277,16 +275,16 @@
   gap: 4px;
 }
 
-/* ✅ FIX BUG 2: Mes messages = VIOLET */
-.message-item.sent .message-bubble {
+/* ✅ ORDRE CORRECT: Mes messages (received) = VIOLET à GAUCHE */
+.message-item.received .message-bubble {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-bottom-right-radius: 4px;
+  border-bottom-left-radius: 4px;
 }
 
-/* ✅ FIX BUG 2: Messages reçus = GRIS */
-.message-item.received .message-bubble {
+/* ✅ ORDRE CORRECT: Messages reçus (sent) = GRIS à DROITE */
+.message-item.sent .message-bubble {
   background: rgba(255, 255, 255, 0.1);
-  border-bottom-left-radius: 4px;
+  border-bottom-right-radius: 4px;
 }
 
 .message-content {
