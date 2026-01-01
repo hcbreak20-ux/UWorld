@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '@/services/api';
 import { useStore } from '@/store';
+import { socketService } from '@/services/socket';
 import './MessagesPanel.css';
 
 interface Conversation {
@@ -32,26 +33,16 @@ interface PrivateMessage {
 
 interface MessagesPanelProps {
   onClose: () => void;
-  initialUserId?: string; // Pour ouvrir directement une conversation
+  initialUserId?: string;
 }
 
 export const MessagesPanel: React.FC<MessagesPanelProps> = ({ onClose, initialUserId }) => {
   const { user } = useStore();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(initialUserId || null);
-  const [selectedUsername, setSelectedUsername] = useState<string>('');
   const [messages, setMessages] = useState<PrivateMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(false);
-
-  // ✅ AJOUTER: Quand initialUserId change, mettre à jour selectedUserId
-useEffect(() => {
-  if (initialUserId) {
-    setSelectedUserId(initialUserId);
-
-    // On devra récupérer le username plus tard
-  }
-}, [initialUserId]);
 
   // Charger les conversations
   useEffect(() => {
@@ -63,6 +54,37 @@ useEffect(() => {
     if (selectedUserId) {
       loadMessages(selectedUserId);
     }
+  }, [selectedUserId]);
+
+  // ✅ NOUVEAU: Écouter les nouveaux messages en temps réel
+  useEffect(() => {
+    const handleNewMessage = (data: {
+      messageId: string;
+      from: { id: string; username: string; avatar: any };
+      content: string;
+      createdAt: string;
+    }) => {
+      console.log('📩 Nouveau message reçu dans MessagesPanel:', data);
+      
+      // Si on est dans la conversation avec cet utilisateur, recharger les messages
+      if (selectedUserId === data.from.id) {
+        loadMessages(data.from.id);
+      }
+      
+      // Rafraîchir les conversations pour mettre à jour le dernier message
+      loadConversations();
+    };
+
+    const socket = socketService.getSocket();
+    if (socket) {
+      socket.on('private_message_notification', handleNewMessage);
+    }
+
+    return () => {
+      if (socket) {
+        socket.off('private_message_notification', handleNewMessage);
+      }
+    };
   }, [selectedUserId]);
 
   const loadConversations = async () => {
@@ -78,40 +100,34 @@ useEffect(() => {
     try {
       const response = await api.get(`/messages/${otherUserId}`);
       setMessages(response.data);
-      
-      // Rafraîchir les conversations pour mettre à jour les non lus
-      loadConversations();
     } catch (error) {
       console.error('Erreur chargement messages:', error);
     }
   };
 
-const sendMessage = async (e: React.FormEvent) => {
-  e.preventDefault();
-  
-  if (!newMessage.trim() || !selectedUserId || loading) return;
-  
-  setLoading(true);
-  
-  try {
-    console.log('📤 Envoi message à:', selectedUserId); // ✅ DEBUG
+  const sendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
     
-    const response = await api.post('/messages/send', {
-      receiverId: selectedUserId,
-      content: newMessage.trim()
-    });
+    if (!newMessage.trim() || !selectedUserId || loading) return;
     
-    setMessages([...messages, response.data]);
-    setNewMessage('');
-    loadConversations();
-  } catch (error: any) {
-    console.error('Erreur envoi message:', error);
-    console.error('userId:', selectedUserId); // ✅ DEBUG
-    alert(error.response?.data?.error || 'Erreur envoi message');
-  } finally {
-    setLoading(false);
-  }
-};
+    setLoading(true);
+    
+    try {
+      const response = await api.post('/messages/send', {
+        receiverId: selectedUserId,
+        content: newMessage.trim()
+      });
+      
+      setMessages([...messages, response.data]);
+      setNewMessage('');
+      loadConversations();
+    } catch (error: any) {
+      console.error('Erreur envoi message:', error);
+      alert(error.response?.data?.error || 'Erreur envoi message');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const formatTime = (dateString: string) => {
     const date = new Date(dateString);
@@ -181,17 +197,22 @@ const sendMessage = async (e: React.FormEvent) => {
 
                 {/* Messages */}
                 <div className="messages-list">
-                  {messages.map((msg) => (
-                    <div
-                      key={msg.id}
-                      className={`message-item ${msg.senderId === user?.id ? 'sent' : 'received'}`}
-                    >
-                      <div className="message-bubble">
-                        <div className="message-content">{msg.content}</div>
-                        <div className="message-time">{formatTime(msg.createdAt)}</div>
+                  {messages.map((msg) => {
+                    // ✅ BUG FIX 2: Corriger la logique sent/received
+                    const isSentByMe = msg.senderId === user?.id;
+                    
+                    return (
+                      <div
+                        key={msg.id}
+                        className={`message-item ${isSentByMe ? 'sent' : 'received'}`}
+                      >
+                        <div className="message-bubble">
+                          <div className="message-content">{msg.content}</div>
+                          <div className="message-time">{formatTime(msg.createdAt)}</div>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 {/* Input */}
