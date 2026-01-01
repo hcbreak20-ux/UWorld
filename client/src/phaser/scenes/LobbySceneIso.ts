@@ -1638,6 +1638,8 @@ private movePlayer(newPosition: PlayerPosition) {
 
     // Messages de chat
     socketService.onChatMessage((message: any) => {
+        console.log('🔵 [PHASER] Message reçu dans Phaser:', message); // ✅ AJOUTER
+        console.log('🔵 [PHASER] Messagerie ouverte?', document.getElementById('player-profile') !== null); // ✅ AJOUTER
       // ChatBox ajoute déjà le message au store, on ne le fait pas ici
       
       // Récupérer le type de message et la cible
