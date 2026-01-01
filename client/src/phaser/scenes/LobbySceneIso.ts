@@ -1654,6 +1654,7 @@ private movePlayer(newPosition: PlayerPosition) {
       
       // Afficher la bulle au-dessus du bon personnage
       if (message.user.id === currentUserId) {
+        console.log('🟢 C\'est MON message, bulle sur this.player'); // ✅ AJOUTER
         // Message de l'utilisateur actuel
         this.showChatBubble(
           this.player,
@@ -1664,9 +1665,13 @@ private movePlayer(newPosition: PlayerPosition) {
           whisperTarget
         );
       } else {
+        console.log('🟡 Message d\'un autre joueur, cherche le sprite'); // ✅ AJOUTER
         // Message d'un autre joueur
         const playerData = this.players.get(message.user.id);
+        console.log('🟡 playerData trouvé?', playerData !== undefined); // ✅ AJOUTER
+        console.log('🟡 playerData:', playerData); // ✅ AJOUTER
         if (playerData) {
+          console.log('🟢 Création bulle sur sprite de', message.user.username); // ✅ AJOUTER
           this.showChatBubble(
             playerData.sprite,
             message.user.id,
@@ -1675,7 +1680,8 @@ private movePlayer(newPosition: PlayerPosition) {
             bubbleType,
             whisperTarget
           );
-        }
+        } else {
+      console.error('❌ Sprite du joueur non trouvé!', message.user.id); // ✅ AJOUTER
       }
     });
   }
