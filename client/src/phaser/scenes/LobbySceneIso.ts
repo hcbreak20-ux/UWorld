@@ -1686,7 +1686,7 @@ console.log('🔵🔵🔵 AVANT currentUserId');
       console.error('❌ Sprite du joueur non trouvé!', message.user.id); // ✅ AJOUTER
       }
     });
-  }
+  
 
   shutdown() {
     this.players.forEach(({ sprite, nameText }) => {
