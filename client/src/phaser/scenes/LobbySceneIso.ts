@@ -1684,8 +1684,9 @@ console.log('🔵🔵🔵 AVANT currentUserId');
           );
         } else {
       console.error('❌ Sprite du joueur non trouvé!', message.user.id); // ✅ AJOUTER
-      }
-    });
+      } // Ferme if(playerData)
+    } // Ferme else principal
+    }); // Ferme onChatMessage
   
 
   shutdown() {
