@@ -78,6 +78,10 @@ export class LobbySceneIso extends Phaser.Scene {
       frameHeight: 48
     });
 
+      // ✅ NOUVEAU: Murs en briques isométriques
+  this.load.image('wall_brick_left', '/assets/habbo-iso/wall_brick_left.png');
+  this.load.image('wall_brick_right', '/assets/habbo-iso/wall_brick_right.png');
+
     // Charger les murs
     ['gray', 'blue', 'pink', 'green'].forEach(color => {
       this.load.image(`wall_${color}`, `/assets/habbo-iso/wall_${color}.png`);
@@ -1396,16 +1400,16 @@ private closePlayerProfile() {
     // Mur arrière (top)
     for (let x = 0; x < roomWidth; x++) {
       const isoPos = this.cartToIso(x, 0);
-      const wall = this.add.image(isoPos.x, isoPos.y - WALL_HEIGHT / 2, `wall_${wallColor}`);
-      wall.setDepth(10);
+const wall = this.add.image(isoPos.x, isoPos.y - WALL_HEIGHT / 2, 'wall_brick_right');
+wall.setDepth(10);
     }
 
     // Mur gauche
     for (let y = 0; y < roomHeight; y++) {
       const isoPos = this.cartToIso(0, y);
-      const wall = this.add.image(isoPos.x, isoPos.y - WALL_HEIGHT / 2, `wall_${wallColor}`);
-      wall.setDepth(10);
-      wall.setAlpha(0.7);
+const wall = this.add.image(isoPos.x, isoPos.y - WALL_HEIGHT / 2, 'wall_brick_left');
+wall.setDepth(10);
+wall.setAlpha(0.7);
     }
 
     // Porte d'entrée - Depth 100
