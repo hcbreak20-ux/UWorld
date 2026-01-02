@@ -1648,6 +1648,8 @@ private movePlayer(newPosition: PlayerPosition) {
       
       console.log('Message reçu (bulle):', message);
       console.log('Type de bulle:', bubbleType);
+      // ✅ AJOUTER CE LOG ICI:
+console.log('🔵🔵🔵 AVANT currentUserId');
       
       // Déterminer si ce joueur doit voir la bulle
       const currentUserId = store.user?.id;
