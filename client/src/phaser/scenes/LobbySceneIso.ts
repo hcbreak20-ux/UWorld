@@ -1687,7 +1687,7 @@ console.log('🔵🔵🔵 AVANT currentUserId');
       } // Ferme if(playerData)
     } // Ferme else principal
     }); // Ferme onChatMessage
-  
+  }
 
   shutdown() {
     this.players.forEach(({ sprite, nameText }) => {
