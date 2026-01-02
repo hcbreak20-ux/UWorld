@@ -14,9 +14,6 @@ import { ChatInput } from '@/components/ChatInput';
 import { MessagesPanel } from '@/components/MessagesPanel';
 import { Toast } from '@/components/Toast';
 
-// ✅ NOUVEAU: Son de notification
-const notificationSound = new Audio('/notification.mp3'); // Vous devrez ajouter ce fichier
-
 export const LobbyPage: React.FC = () => {
   const navigate = useNavigate();
   const gameRef = useRef<Phaser.Game | null>(null);
@@ -28,14 +25,57 @@ export const LobbyPage: React.FC = () => {
   const [showMessages, setShowMessages] = useState(false);
   const [messageUserId, setMessageUserId] = useState<string | null>(null);
   
-  // ✅ NOUVEAU: États pour notifications
+  // États pour notifications
   const [unreadCount, setUnreadCount] = useState(0);
   const [toast, setToast] = useState<{
     message: string;
     username?: string;
   } | null>(null);
 
-  // ✅ NOUVEAU: Charger le compteur de messages non lus
+  // ✅ NOUVEAU: Fonction pour jouer le son de notification
+  const playNotificationSound = () => {
+    try {
+      const audio = new Audio('/notification.mp3');
+      audio.volume = 0.5; // Volume à 50%
+      
+      audio.play()
+        .then(() => console.log('🔊 Son joué'))
+        .catch(() => {
+          console.log('⚠️ Son bloqué, utilisation du fallback');
+          playBeep(); // Fallback si bloqué par le navigateur
+        });
+    } catch (err) {
+      console.error('❌ Erreur lecture son:', err);
+      playBeep(); // Fallback en cas d'erreur
+    }
+  };
+
+  // ✅ NOUVEAU: Fallback - Générer un bip avec Web Audio API
+  const playBeep = () => {
+    try {
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      oscillator.frequency.value = 800; // Fréquence 800Hz
+      oscillator.type = 'sine';
+      
+      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+      
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 0.5);
+      
+      console.log('🔊 Bip généré');
+    } catch (err) {
+      console.error('❌ Erreur génération son:', err);
+    }
+  };
+
+  // Charger le compteur de messages non lus
   const loadUnreadCount = async () => {
     try {
       const response = await api.get('/messages/unread/count');
@@ -71,7 +111,7 @@ export const LobbyPage: React.FC = () => {
           setCurrentRoom(publicRooms[0]);
         }
 
-        // ✅ NOUVEAU: Charger le compteur de messages non lus
+        // Charger le compteur de messages non lus
         loadUnreadCount();
 
         setLoading(false);
@@ -89,7 +129,7 @@ export const LobbyPage: React.FC = () => {
     };
   }, []);
 
-  // ✅ NOUVEAU: Écouter les notifications de messages privés
+  // ✅ MODIFIÉ: Écouter les notifications de messages privés avec le nouveau système de son
   useEffect(() => {
     const handlePrivateMessage = (data: {
       messageId: string;
@@ -97,7 +137,7 @@ export const LobbyPage: React.FC = () => {
       content: string;
       createdAt: string;
     }) => {
-      console.log('🔔 Notification message privé:', data);
+      console.log('📩 Notification message privé:', data);
       
       // Incrémenter le compteur
       setUnreadCount(prev => prev + 1);
@@ -108,14 +148,8 @@ export const LobbyPage: React.FC = () => {
         username: data.from.username
       });
       
-      // Jouer le son
-      try {
-        notificationSound.play().catch(err => {
-          console.log('Erreur lecture son:', err);
-        });
-      } catch (error) {
-        console.log('Impossible de jouer le son');
-      }
+      // ✅ NOUVEAU: Jouer le son avec le système amélioré
+      playNotificationSound();
     };
 
     const socket = socketService.getSocket();
@@ -168,7 +202,7 @@ export const LobbyPage: React.FC = () => {
     navigate('/login');
   };
 
-  // ✅ NOUVEAU: Rafraîchir le compteur quand on ouvre la messagerie
+  // Rafraîchir le compteur quand on ouvre la messagerie
   const handleOpenMessages = () => {
     setShowMessages(true);
     // Rafraîchir le compteur après 1 seconde (temps de charger les messages)
@@ -190,7 +224,7 @@ export const LobbyPage: React.FC = () => {
     <div className="lobby-page">
       <div className="lobby-header">
         <div className="header-left">
-          {/* ✅ Logo UWorld */}
+          {/* Logo UWorld */}
           <img src="/uworld-logo.png" alt="UWorld" className="header-logo" />
           <h1>UWorld</h1>
         </div>
@@ -210,7 +244,7 @@ export const LobbyPage: React.FC = () => {
             <span className="currency-label">uNuggets</span>
           </div>
 
-          {/* ✅ NOUVEAU: Bouton Messages avec badge */}
+          {/* Bouton Messages avec badge */}
           <button 
             onClick={handleOpenMessages}
             className="messages-btn"
@@ -267,7 +301,7 @@ export const LobbyPage: React.FC = () => {
         />
       )}
 
-      {/* ✅ NOUVEAU: Toast de notification */}
+      {/* Toast de notification */}
       {toast && (
         <Toast
           message={toast.message}

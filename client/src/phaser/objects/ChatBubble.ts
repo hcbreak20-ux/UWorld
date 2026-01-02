@@ -43,7 +43,7 @@ export class ChatBubble extends Phaser.GameObjects.Container {
     
     this.text = scene.add.text(0, 0, fullMessage, textStyle);
     this.text.setOrigin(0.5, 0.5);
-    this.text.setWordWrapWidth(200);
+    this.text.setWordWrapWidth(180); // ✅ Réduit pour bulle plus mince
     this.add(this.text);
 
     // Dessiner la bulle
@@ -69,19 +69,19 @@ export class ChatBubble extends Phaser.GameObjects.Container {
 
   private getTextStyle(): Phaser.Types.GameObjects.Text.TextStyle {
     const baseStyle: Phaser.Types.GameObjects.Text.TextStyle = {
-      fontSize: '14px',
+      fontSize: '13px', // ✅ Réduit
       fontFamily: 'Arial, sans-serif',
       align: 'center',
-      wordWrap: { width: 180 },
-      padding: { x: 10, y: 8 },
+      wordWrap: { width: 160 }, // ✅ Réduit
+      padding: { x: 6, y: 4 }, // ✅ Padding réduit pour bulle mince
     };
 
     switch (this.bubbleType) {
       case 'shout':
         return {
           ...baseStyle,
-          fontSize: '16px',
-          fontFamily: 'Arial Black, Arial, sans-serif', // Police grasse
+          fontSize: '14px',
+          fontFamily: 'Arial Black, Arial, sans-serif',
           color: '#ffffff',
           stroke: '#000000',
           strokeThickness: 2,
@@ -89,8 +89,8 @@ export class ChatBubble extends Phaser.GameObjects.Container {
       case 'whisper':
         return {
           ...baseStyle,
-          fontSize: '13px',
-          fontStyle: 'italic', // Italique
+          fontSize: '12px',
+          fontStyle: 'italic',
           color: '#ffffff',
         };
       default: // normal (parler)
@@ -102,35 +102,26 @@ export class ChatBubble extends Phaser.GameObjects.Container {
   }
 
   private drawBubble() {
-    const padding = 12;
+    const padding = 8; // ✅ Padding réduit pour bulle plus mince
     const width = this.text.width + padding * 2;
     const height = this.text.height + padding * 2;
-    const radius = 12;
+    const radius = 8; // ✅ Coins moins arrondis
 
-    // Couleurs selon le type avec CONTOURS ÉPAIS
-    let fillColor: number;
+    // ✅ NOUVEAU STYLE: Fond noir avec contour vert fin
+    let fillColor: number = 0x000000; // Fond noir
     let borderColor: number;
-    let borderWidth: number = 4; // CONTOUR ÉPAIS
-    let alpha: number;
+    let borderWidth: number = 2; // ✅ Ligne fine (au lieu de 4)
+    let alpha: number = 0.85; // Légèrement transparent
 
     switch (this.bubbleType) {
       case 'shout':
-        // ROUGE pour crier
-        fillColor = 0x2a2a2a; // Fond gris foncé
-        borderColor = 0xff0000; // ROUGE VIF
-        alpha = 0.95;
+        borderColor = 0xff0000; // ROUGE pour crier
         break;
       case 'whisper':
-        // BLEU pour chuchoter
-        fillColor = 0x2a2a2a; // Fond gris foncé
-        borderColor = 0x0088ff; // BLEU VIF
-        alpha = 0.9;
+        borderColor = 0x0088ff; // BLEU pour chuchoter
         break;
       default:
-        // VERT pour parler (normal)
-        fillColor = 0x2a2a2a; // Fond gris foncé
-        borderColor = 0x00ff00; // VERT VIF
-        alpha = 0.9;
+        borderColor = 0x00ff00; // ✅ VERT pour parler (normal)
     }
 
     // Dessiner la queue (triangle pointant vers le bas)
@@ -138,24 +129,16 @@ export class ChatBubble extends Phaser.GameObjects.Container {
     this.tail.fillStyle(fillColor, alpha);
     this.tail.lineStyle(borderWidth, borderColor, 1);
     this.tail.beginPath();
-    this.tail.moveTo(0, height / 2 + 5);
-    this.tail.lineTo(-10, height / 2 + 18);
-    this.tail.lineTo(10, height / 2 + 18);
+    this.tail.moveTo(0, height / 2 + 3);
+    this.tail.lineTo(-8, height / 2 + 12); // ✅ Queue plus petite
+    this.tail.lineTo(8, height / 2 + 12);
     this.tail.closePath();
     this.tail.fillPath();
     this.tail.strokePath();
 
-    // Ombre portée (fond noir légèrement décalé)
-    this.background.fillStyle(0x000000, 0.4);
-    this.background.fillRoundedRect(
-      -width / 2 + 3,
-      -height / 2 + 3,
-      width,
-      height,
-      radius
-    );
+    // ✅ PAS d'ombre portée pour style plus simple
 
-    // Dessiner le fond de la bulle
+    // Dessiner le fond de la bulle (noir)
     this.background.fillStyle(fillColor, alpha);
     this.background.fillRoundedRect(
       -width / 2,
@@ -165,7 +148,7 @@ export class ChatBubble extends Phaser.GameObjects.Container {
       radius
     );
 
-    // CONTOUR ÉPAIS COLORÉ
+    // ✅ CONTOUR VERT FIN (2px)
     this.background.lineStyle(borderWidth, borderColor, 1);
     this.background.strokeRoundedRect(
       -width / 2,
@@ -177,13 +160,10 @@ export class ChatBubble extends Phaser.GameObjects.Container {
   }
 
   private startFloatAnimation() {
-    // MONTÉE DÉSACTIVÉE: Les bulles montent quand une nouvelle bulle apparaît
-    // On garde juste l'oscillation et l'apparition
-
     // Légère oscillation horizontale pour effet vivant
     this.scene.tweens.add({
       targets: this,
-      x: this.x + 4,
+      x: this.x + 3, // ✅ Oscillation réduite
       duration: 2000,
       yoyo: true,
       repeat: -1,
@@ -209,7 +189,6 @@ export class ChatBubble extends Phaser.GameObjects.Container {
     const zoom = camera.zoom;
     
     // Scale inversé au zoom pour garder taille constante
-    // Mais pas trop petit ni trop grand
     const targetScale = Phaser.Math.Clamp(1 / zoom, 0.6, 1.4);
     this.setScale(targetScale);
   }
@@ -218,8 +197,6 @@ export class ChatBubble extends Phaser.GameObjects.Container {
    * Mettre à jour la position et l'échelle (appelé depuis update de la scène)
    */
   public updateBubble(spriteX: number, spriteY: number) {
-    // Note: La position est déjà animée par le tween
-    // On met juste à jour l'échelle selon le zoom
     this.updateScale();
   }
 
@@ -236,16 +213,13 @@ export class ChatBubble extends Phaser.GameObjects.Container {
   ): boolean {
     switch (this.bubbleType) {
       case 'shout':
-        // Tout le monde voit les cris
         return true;
 
       case 'whisper':
-        // Seulement la cible voit les chuchotements
         return targetUserId === viewerUserId;
 
       case 'normal':
       default:
-        // Distance maximale pour voir un message normal (en cases de grille)
         const maxDistance = 5;
         const distance = Math.sqrt(
           Math.pow(viewerX - speakerX, 2) + Math.pow(viewerY - speakerY, 2)
