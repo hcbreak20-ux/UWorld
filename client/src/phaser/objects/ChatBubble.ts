@@ -32,7 +32,7 @@ export class ChatBubble extends Phaser.GameObjects.Container {
     this.background = scene.add.graphics();
     this.add(this.background);
 
-    // Créer le texte avec le nom de l'utilisateur
+    // ✅ Créer le texte ULTRA COMPACT
     const textStyle = this.getTextStyle();
     let fullMessage = `${username}: ${message}`;
     
@@ -43,7 +43,7 @@ export class ChatBubble extends Phaser.GameObjects.Container {
     
     this.text = scene.add.text(0, 0, fullMessage, textStyle);
     this.text.setOrigin(0.5, 0.5);
-    this.text.setWordWrapWidth(180); // ✅ Réduit pour bulle plus mince
+    this.text.setWordWrapWidth(120); // ✅ TRÈS court pour bulle mince
     this.add(this.text);
 
     // Dessiner la bulle
@@ -55,11 +55,11 @@ export class ChatBubble extends Phaser.GameObjects.Container {
     // IMPORTANT: Depth très élevé pour être au-dessus de TOUT
     this.setDepth(10000);
 
-    // Ajuster la taille selon le zoom de la caméra pour garder taille constante
+    // Ajuster la taille selon le zoom de la caméra
     this.updateScale();
 
-    // Démarrer l'animation de montée CONTINUE
-    this.startFloatAnimation();
+    // ✅ NOUVEAU: Démarrer l'animation de MONTÉE CONTINUE
+    this.startContinuousRiseAnimation();
 
     // Auto-destruction après 30 secondes
     this.scene.time.delayedCall(30000, () => {
@@ -69,31 +69,31 @@ export class ChatBubble extends Phaser.GameObjects.Container {
 
   private getTextStyle(): Phaser.Types.GameObjects.Text.TextStyle {
     const baseStyle: Phaser.Types.GameObjects.Text.TextStyle = {
-      fontSize: '13px', // ✅ Réduit
+      fontSize: '11px', // ✅ TRÈS petit
       fontFamily: 'Arial, sans-serif',
       align: 'center',
-      wordWrap: { width: 160 }, // ✅ Réduit
-      padding: { x: 6, y: 4 }, // ✅ Padding réduit pour bulle mince
+      wordWrap: { width: 110 },
+      padding: { x: 3, y: 2 }, // ✅ Padding minimal
     };
 
     switch (this.bubbleType) {
       case 'shout':
         return {
           ...baseStyle,
-          fontSize: '14px',
+          fontSize: '12px',
           fontFamily: 'Arial Black, Arial, sans-serif',
           color: '#ffffff',
           stroke: '#000000',
-          strokeThickness: 2,
+          strokeThickness: 1,
         };
       case 'whisper':
         return {
           ...baseStyle,
-          fontSize: '12px',
+          fontSize: '10px',
           fontStyle: 'italic',
           color: '#ffffff',
         };
-      default: // normal (parler)
+      default:
         return {
           ...baseStyle,
           color: '#ffffff',
@@ -102,43 +102,41 @@ export class ChatBubble extends Phaser.GameObjects.Container {
   }
 
   private drawBubble() {
-    const padding = 8; // ✅ Padding réduit pour bulle plus mince
+    const padding = 4; // ✅ Padding MINIMAL
     const width = this.text.width + padding * 2;
     const height = this.text.height + padding * 2;
-    const radius = 8; // ✅ Coins moins arrondis
+    const radius = 6; // ✅ Coins peu arrondis
 
-    // ✅ NOUVEAU STYLE: Fond noir avec contour vert fin
-    let fillColor: number = 0x000000; // Fond noir
+    // Fond noir avec contour vert fin
+    let fillColor: number = 0x000000;
     let borderColor: number;
-    let borderWidth: number = 2; // ✅ Ligne fine (au lieu de 4)
-    let alpha: number = 0.85; // Légèrement transparent
+    let borderWidth: number = 1.5; // ✅ Ligne TRÈS fine
+    let alpha: number = 0.85;
 
     switch (this.bubbleType) {
       case 'shout':
-        borderColor = 0xff0000; // ROUGE pour crier
+        borderColor = 0xff0000; // ROUGE
         break;
       case 'whisper':
-        borderColor = 0x0088ff; // BLEU pour chuchoter
+        borderColor = 0x0088ff; // BLEU
         break;
       default:
-        borderColor = 0x00ff00; // ✅ VERT pour parler (normal)
+        borderColor = 0x00ff00; // VERT
     }
 
-    // Dessiner la queue (triangle pointant vers le bas)
+    // Queue (triangle très petit)
     this.tail.clear();
     this.tail.fillStyle(fillColor, alpha);
     this.tail.lineStyle(borderWidth, borderColor, 1);
     this.tail.beginPath();
-    this.tail.moveTo(0, height / 2 + 3);
-    this.tail.lineTo(-8, height / 2 + 12); // ✅ Queue plus petite
-    this.tail.lineTo(8, height / 2 + 12);
+    this.tail.moveTo(0, height / 2 + 2);
+    this.tail.lineTo(-5, height / 2 + 8); // ✅ Queue minuscule
+    this.tail.lineTo(5, height / 2 + 8);
     this.tail.closePath();
     this.tail.fillPath();
     this.tail.strokePath();
 
-    // ✅ PAS d'ombre portée pour style plus simple
-
-    // Dessiner le fond de la bulle (noir)
+    // Fond de la bulle (noir)
     this.background.fillStyle(fillColor, alpha);
     this.background.fillRoundedRect(
       -width / 2,
@@ -148,7 +146,7 @@ export class ChatBubble extends Phaser.GameObjects.Container {
       radius
     );
 
-    // ✅ CONTOUR VERT FIN (2px)
+    // Contour vert très fin
     this.background.lineStyle(borderWidth, borderColor, 1);
     this.background.strokeRoundedRect(
       -width / 2,
@@ -159,11 +157,42 @@ export class ChatBubble extends Phaser.GameObjects.Container {
     );
   }
 
-  private startFloatAnimation() {
-    // Légère oscillation horizontale pour effet vivant
+  private startContinuousRiseAnimation() {
+    // ✅ MONTÉE CONTINUE toutes les 5 secondes
+    const riseInterval = 5000; // 5 secondes
+    const riseDistance = 100; // Monter de 100px à chaque fois
+
+    // Fonction qui fait monter la bulle
+    const rise = () => {
+      this.scene.tweens.add({
+        targets: this,
+        y: this.y - riseDistance,
+        duration: 4000, // Animation douce de 4 secondes
+        ease: 'Sine.easeInOut',
+      });
+    };
+
+    // Première montée après 5 secondes
+    this.scene.time.delayedCall(riseInterval, () => {
+      rise();
+      
+      // Ensuite, monter toutes les 5 secondes
+      const riseTimer = this.scene.time.addEvent({
+        delay: riseInterval,
+        callback: rise,
+        loop: true
+      });
+
+      // Nettoyer le timer quand la bulle est détruite
+      this.on('destroy', () => {
+        riseTimer.remove();
+      });
+    });
+
+    // Légère oscillation horizontale
     this.scene.tweens.add({
       targets: this,
-      x: this.x + 3, // ✅ Oscillation réduite
+      x: this.x + 2,
       duration: 2000,
       yoyo: true,
       repeat: -1,
@@ -175,34 +204,23 @@ export class ChatBubble extends Phaser.GameObjects.Container {
     this.scene.tweens.add({
       targets: this,
       alpha: 1,
-      duration: 400,
+      duration: 300,
       ease: 'Power2',
     });
   }
 
-  /**
-   * Mettre à jour l'échelle selon le zoom de la caméra
-   * Pour garder une taille constante à l'écran
-   */
   private updateScale() {
     const camera = this.scene.cameras.main;
     const zoom = camera.zoom;
     
-    // Scale inversé au zoom pour garder taille constante
     const targetScale = Phaser.Math.Clamp(1 / zoom, 0.6, 1.4);
     this.setScale(targetScale);
   }
 
-  /**
-   * Mettre à jour la position et l'échelle (appelé depuis update de la scène)
-   */
   public updateBubble(spriteX: number, spriteY: number) {
     this.updateScale();
   }
 
-  /**
-   * Vérifier si la bulle doit être visible pour un joueur donné
-   */
   public shouldBeVisibleFor(
     viewerX: number,
     viewerY: number,

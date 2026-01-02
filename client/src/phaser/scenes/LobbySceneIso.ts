@@ -1729,7 +1729,7 @@ console.log('🔵🔵🔵 AVANT currentUserId');
     const userBubbles = this.chatBubbles.get(userId)!;
     
     // NOUVELLE LOGIQUE: Créer la nouvelle bulle à la position de base
-    const bubbleY = sprite.y - 60; // Toujours à la même position de base
+    const bubbleY = sprite.y - 120; // Toujours à la même position de base
 
     // Créer la bulle avec le username
     const bubble = new ChatBubble(
