@@ -24,23 +24,23 @@ router.get('/conversations', authMiddleware, async (req: AuthRequest, res) => {
       return res.status(401).json({ error: 'Non authentifié' });
     }
 
-    // Récupérer tous les messages où l'utilisateur est impliqué
+    // ✅ CORRIGÉ: fromId et toId au lieu de senderId et receiverId
     const messages = await prisma.privateMessage.findMany({
       where: {
         OR: [
-          { senderId: userId },
-          { receiverId: userId }
+          { fromId: parseInt(userId) },
+          { toId: parseInt(userId) }
         ]
       },
       include: {
-        sender: {
+        from: {
           select: {
             id: true,
             username: true,
             avatar: true
           }
         },
-        receiver: {
+        to: {
           select: {
             id: true,
             username: true,
@@ -57,10 +57,10 @@ router.get('/conversations', authMiddleware, async (req: AuthRequest, res) => {
     const conversationsMap = new Map();
 
     messages.forEach(msg => {
-      const otherUserId = msg.senderId === userId ? msg.receiverId : msg.senderId;
+      const otherUserId = msg.fromId === parseInt(userId) ? msg.toId : msg.fromId;
       
       if (!conversationsMap.has(otherUserId)) {
-        const otherUser = msg.senderId === userId ? msg.receiver : msg.sender;
+        const otherUser = msg.fromId === parseInt(userId) ? msg.to : msg.from;
         
         conversationsMap.set(otherUserId, {
           userId: otherUserId,
@@ -71,8 +71,8 @@ router.get('/conversations', authMiddleware, async (req: AuthRequest, res) => {
         });
       }
 
-      // Compter les non lus
-      if (msg.receiverId === userId && !msg.read) {
+      // ✅ CORRIGÉ: isRead au lieu de read
+      if (msg.toId === parseInt(userId) && !msg.isRead) {
         const conv = conversationsMap.get(otherUserId);
         conv.unreadCount++;
       }
@@ -103,19 +103,19 @@ router.get('/:otherUserId', authMiddleware, async (req: AuthRequest, res) => {
     const messages = await prisma.privateMessage.findMany({
       where: {
         OR: [
-          { senderId: userId, receiverId: otherUserId },
-          { senderId: otherUserId, receiverId: userId }
+          { fromId: parseInt(userId), toId: parseInt(otherUserId) },
+          { fromId: parseInt(otherUserId), toId: parseInt(userId) }
         ]
       },
       include: {
-        sender: {
+        from: {
           select: {
             id: true,
             username: true,
             avatar: true
           }
         },
-        receiver: {
+        to: {
           select: {
             id: true,
             username: true,
@@ -128,15 +128,15 @@ router.get('/:otherUserId', authMiddleware, async (req: AuthRequest, res) => {
       }
     });
 
-    // Marquer comme lus
+    // ✅ CORRIGÉ: isRead au lieu de read
     await prisma.privateMessage.updateMany({
       where: {
-        senderId: otherUserId,
-        receiverId: userId,
-        read: false
+        fromId: parseInt(otherUserId),
+        toId: parseInt(userId),
+        isRead: false
       },
       data: {
-        read: true
+        isRead: true
       }
     });
 
@@ -168,35 +168,35 @@ router.post('/send', authMiddleware, async (req: AuthRequest, res) => {
       return res.status(400).json({ error: 'Message trop long (max 500 caractères)' });
     }
 
-    if (receiverId === userId) {
+    if (parseInt(receiverId) === parseInt(userId)) {
       return res.status(400).json({ error: 'Vous ne pouvez pas vous envoyer un message' });
     }
 
     // Vérifier que le destinataire existe
     const receiver = await prisma.user.findUnique({
-      where: { id: receiverId }
+      where: { id: parseInt(receiverId) }
     });
 
     if (!receiver) {
       return res.status(404).json({ error: 'Utilisateur non trouvé' });
     }
 
-    // Créer le message
+    // ✅ CORRIGÉ: fromId et toId
     const message = await prisma.privateMessage.create({
       data: {
-        senderId: userId,
-        receiverId,
+        fromId: parseInt(userId),
+        toId: parseInt(receiverId),
         content: content.trim()
       },
       include: {
-        sender: {
+        from: {
           select: {
             id: true,
             username: true,
             avatar: true
           }
         },
-        receiver: {
+        to: {
           select: {
             id: true,
             username: true,
@@ -206,16 +206,15 @@ router.post('/send', authMiddleware, async (req: AuthRequest, res) => {
       }
     });
 
-    // ✅ NOUVEAU: Émettre notification Socket.IO au destinataire
+    // ✅ Émettre notification Socket.IO au destinataire
     if (io) {
-      // Trouver le socket du destinataire
       const sockets = await io.fetchSockets();
       const receiverSocket = sockets.find((s: any) => s.userId === receiverId);
       
       if (receiverSocket) {
         receiverSocket.emit('private_message_notification', {
           messageId: message.id,
-          from: message.sender,
+          from: message.from,
           content: message.content,
           createdAt: message.createdAt
         });
@@ -242,10 +241,11 @@ router.get('/unread/count', authMiddleware, async (req: AuthRequest, res) => {
       return res.status(401).json({ error: 'Non authentifié' });
     }
 
+    // ✅ CORRIGÉ: toId et isRead
     const count = await prisma.privateMessage.count({
       where: {
-        receiverId: userId,
-        read: false
+        toId: parseInt(userId),
+        isRead: false
       }
     });
 

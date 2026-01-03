@@ -1,4 +1,3 @@
-import { QuestType, ResetTime } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { levelService } from './level.service';
 
@@ -8,23 +7,18 @@ export class QuestService {
    */
   async assignTutorialQuests(userId: string) {
     try {
-      // Récupérer toutes les quêtes tutorial
       const tutorialQuests = await prisma.quest.findMany({
         where: {
-          type: QuestType.TUTORIAL,
+          type: 'tutorial',
           isActive: true,
-        },
-        orderBy: {
-          order: 'asc',
         },
       });
 
-      // Créer les UserQuest pour chaque quête tutorial
       const userQuests = tutorialQuests.map((quest) => ({
-        userId,
+        userId: parseInt(userId),
         questId: quest.id,
         progress: 0,
-        completed: false,
+        isCompleted: false,
       }));
 
       await prisma.userQuest.createMany({
@@ -32,10 +26,10 @@ export class QuestService {
         skipDuplicates: true,
       });
 
-      console.log(`✅ ${userQuests.length} quêtes tutorial assignées à l'utilisateur ${userId}`);
+      console.log(`✅ ${userQuests.length} quêtes tutorial assignées`);
       return userQuests;
     } catch (error) {
-      console.error('Erreur lors de l\'assignation des quêtes tutorial:', error);
+      console.error('Erreur assignation tutorial:', error);
       throw error;
     }
   }
@@ -45,60 +39,56 @@ export class QuestService {
    */
   async assignDailyWeeklyQuests(userId: string) {
     try {
-      // Récupérer toutes les quêtes daily et weekly actives
       const quests = await prisma.quest.findMany({
         where: {
-          type: { in: [QuestType.DAILY, QuestType.WEEKLY] },
+          type: { in: ['daily', 'weekly'] },
           isActive: true,
         },
       });
 
-      // Créer les UserQuest si elles n'existent pas
       for (const quest of quests) {
         await prisma.userQuest.upsert({
           where: {
             userId_questId: {
-              userId,
+              userId: parseInt(userId),
               questId: quest.id,
             },
           },
           update: {},
           create: {
-            userId,
+            userId: parseInt(userId),
             questId: quest.id,
             progress: 0,
-            completed: false,
-            lastReset: new Date(),
+            isCompleted: false,
           },
         });
       }
 
-      console.log(`✅ Quêtes daily/weekly assignées à l'utilisateur ${userId}`);
+      console.log(`✅ Quêtes daily/weekly assignées`);
     } catch (error) {
-      console.error('Erreur lors de l\'assignation des quêtes daily/weekly:', error);
+      console.error('Erreur assignation daily/weekly:', error);
       throw error;
     }
   }
 
   /**
-   * Récupérer toutes les quêtes d'un joueur avec leur progression
+   * Récupérer toutes les quêtes d'un joueur
    */
   async getUserQuests(userId: string) {
     try {
       const userQuests = await prisma.userQuest.findMany({
-        where: { userId },
+        where: { userId: parseInt(userId) },
         include: {
           quest: true,
         },
-        orderBy: [
-          { quest: { type: 'asc' } },
-          { quest: { order: 'asc' } },
-        ],
+        orderBy: {
+          createdAt: 'asc',
+        },
       });
 
       return userQuests;
     } catch (error) {
-      console.error('Erreur lors de la récupération des quêtes:', error);
+      console.error('Erreur récupération quêtes:', error);
       throw error;
     }
   }
@@ -108,242 +98,99 @@ export class QuestService {
    */
   async trackProgress(userId: string, targetType: string, increment: number = 1) {
     try {
-      // Trouver toutes les quêtes actives correspondant au targetType
+      // Trouver les quêtes correspondantes (basé sur la description ou title)
       const quests = await prisma.quest.findMany({
         where: {
-          targetType,
           isActive: true,
+          OR: [
+            { description: { contains: targetType } },
+            { title: { contains: targetType } }
+          ]
         },
       });
 
       if (quests.length === 0) return;
 
-      // Mettre à jour la progression pour chaque quête
       for (const quest of quests) {
+        // Récupérer le targetCount depuis reward JSON
+        const reward = quest.reward as any;
+        const targetCount = reward?.targetCount || 10;
+
         const userQuest = await prisma.userQuest.findUnique({
           where: {
             userId_questId: {
-              userId,
+              userId: parseInt(userId),
               questId: quest.id,
             },
           },
         });
 
-        // Si l'utilisateur n'a pas cette quête, la créer
         if (!userQuest) {
           await prisma.userQuest.create({
             data: {
-              userId,
+              userId: parseInt(userId),
               questId: quest.id,
               progress: increment,
-              completed: increment >= quest.targetCount,
-              completedAt: increment >= quest.targetCount ? new Date() : null,
+              isCompleted: increment >= targetCount,
+              completedAt: increment >= targetCount ? new Date() : null,
             },
           });
           continue;
         }
 
-        // Ne pas mettre à jour si déjà complété
-        if (userQuest.completed) continue;
+        if (userQuest.isCompleted) continue;
 
-        // Incrémenter la progression
         const newProgress = userQuest.progress + increment;
-        const isCompleted = newProgress >= quest.targetCount;
+        const isCompleted = newProgress >= targetCount;
 
         await prisma.userQuest.update({
-          where: {
-            id: userQuest.id,
-          },
+          where: { id: userQuest.id },
           data: {
             progress: newProgress,
-            completed: isCompleted,
+            isCompleted: isCompleted,
             completedAt: isCompleted ? new Date() : null,
           },
         });
 
-        console.log(`📊 Progression: ${quest.name} → ${newProgress}/${quest.targetCount}`);
+        console.log(`📊 Progression: ${quest.title} → ${newProgress}/${targetCount}`);
 
-        // Si la quête vient d'être complétée, log
-        if (isCompleted && !userQuest.completed) {
-          console.log(`🎉 Quête complétée: ${quest.name}`);
+        if (isCompleted && !userQuest.isCompleted) {
+          console.log(`🎉 Quête complétée: ${quest.title}`);
         }
       }
     } catch (error) {
-      console.error('Erreur lors du tracking de progression:', error);
-      throw error;
+      console.error('Erreur tracking:', error);
     }
   }
 
   /**
-   * Tracker les modes de chat utilisés (normal, shout, whisper)
-   * Pour la quête "Communicateur"
+   * Tracker les modes de chat
    */
   async trackChatMode(userId: string, chatMode: 'normal' | 'shout' | 'whisper') {
     try {
-      const quests = await prisma.quest.findMany({
-        where: {
-          targetType: 'use_chat_modes',
-          isActive: true,
-        },
-      });
-
-      for (const quest of quests) {
-        const userQuest = await prisma.userQuest.findUnique({
-          where: {
-            userId_questId: { userId, questId: quest.id },
-          },
-        });
-
-        if (!userQuest || userQuest.completed) continue;
-
-        // Récupérer les modes déjà utilisés
-        const metadata = (userQuest.metadata as any) || {};
-        const usedModes = new Set<string>(metadata.chatModes || []);
-        
-        // Ajouter le nouveau mode
-        const hadMode = usedModes.has(chatMode);
-        usedModes.add(chatMode);
-
-        // Si c'est un nouveau mode, incrémenter la progression
-        if (!hadMode) {
-          const newProgress = usedModes.size;
-          const isCompleted = newProgress >= quest.targetCount;
-
-          await prisma.userQuest.update({
-            where: { id: userQuest.id },
-            data: {
-              progress: newProgress,
-              metadata: { chatModes: Array.from(usedModes) },
-              completed: isCompleted,
-              completedAt: isCompleted ? new Date() : null,
-            },
-          });
-
-          console.log(`💬 Mode chat ${chatMode} utilisé → ${newProgress}/${quest.targetCount}`);
-
-          if (isCompleted) {
-            console.log(`🎉 Quête complétée: ${quest.name}`);
-          }
-        }
-      }
+      await this.trackProgress(userId, 'chat_modes', 1);
     } catch (error) {
       console.error('Erreur trackChatMode:', error);
     }
   }
 
   /**
-   * Tracker les jours de connexion uniques
-   * Pour la quête "Série de Connexions"
+   * Tracker les jours de connexion
    */
   async trackLoginDay(userId: string) {
     try {
-      const quests = await prisma.quest.findMany({
-        where: {
-          targetType: 'login_days',
-          isActive: true,
-        },
-      });
-
-      const today = new Date().toISOString().split('T')[0]; // Format: YYYY-MM-DD
-
-      for (const quest of quests) {
-        const userQuest = await prisma.userQuest.findUnique({
-          where: {
-            userId_questId: { userId, questId: quest.id },
-          },
-        });
-
-        if (!userQuest || userQuest.completed) continue;
-
-        // Récupérer les jours de connexion
-        const metadata = (userQuest.metadata as any) || {};
-        const loginDays = new Set<string>(metadata.loginDays || []);
-        
-        // Ajouter aujourd'hui si pas déjà présent
-        const hadToday = loginDays.has(today);
-        loginDays.add(today);
-
-        if (!hadToday) {
-          const newProgress = loginDays.size;
-          const isCompleted = newProgress >= quest.targetCount;
-
-          await prisma.userQuest.update({
-            where: { id: userQuest.id },
-            data: {
-              progress: newProgress,
-              metadata: { loginDays: Array.from(loginDays) },
-              completed: isCompleted,
-              completedAt: isCompleted ? new Date() : null,
-            },
-          });
-
-          console.log(`📅 Jour de connexion unique #${newProgress}/${quest.targetCount}`);
-
-          if (isCompleted) {
-            console.log(`🎉 Quête complétée: ${quest.name}`);
-          }
-        }
-      }
+      await this.trackProgress(userId, 'login_days', 1);
     } catch (error) {
       console.error('Erreur trackLoginDay:', error);
     }
   }
 
   /**
-   * Tracker le temps passé en ligne (en minutes)
-   * Pour les quêtes "Temps Passé" et "Marathonien"
+   * Tracker le temps en ligne
    */
   async trackTimeOnline(userId: string, minutes: number = 1) {
     try {
-      const quests = await prisma.quest.findMany({
-        where: {
-          targetType: 'time_online',
-          isActive: true,
-        },
-      });
-
-      for (const quest of quests) {
-        const userQuest = await prisma.userQuest.findUnique({
-          where: {
-            userId_questId: { userId, questId: quest.id },
-          },
-        });
-
-        if (!userQuest) {
-          // Créer la quête si elle n'existe pas
-          await prisma.userQuest.create({
-            data: {
-              userId,
-              questId: quest.id,
-              progress: minutes,
-              completed: minutes >= quest.targetCount,
-              completedAt: minutes >= quest.targetCount ? new Date() : null,
-            },
-          });
-          continue;
-        }
-
-        if (userQuest.completed) continue;
-
-        // Incrémenter le temps
-        const newProgress = userQuest.progress + minutes;
-        const isCompleted = newProgress >= quest.targetCount;
-
-        await prisma.userQuest.update({
-          where: { id: userQuest.id },
-          data: {
-            progress: newProgress,
-            completed: isCompleted,
-            completedAt: isCompleted ? new Date() : null,
-          },
-        });
-
-        console.log(`⏰ Temps en ligne: ${quest.name} → ${newProgress}/${quest.targetCount} minutes`);
-
-        if (isCompleted) {
-          console.log(`🎉 Quête complétée: ${quest.name}`);
-        }
-      }
+      await this.trackProgress(userId, 'time_online', minutes);
     } catch (error) {
       console.error('Erreur trackTimeOnline:', error);
     }
@@ -352,13 +199,13 @@ export class QuestService {
   /**
    * Réclamer la récompense d'une quête
    */
-  async claimReward(userId: string, questId: string) {
+  async claimReward(userId: string, questId: number) {
     try {
       const userQuest = await prisma.userQuest.findUnique({
         where: {
           userId_questId: {
-            userId,
-            questId,
+            userId: parseInt(userId),
+            questId: questId,
           },
         },
         include: {
@@ -371,135 +218,123 @@ export class QuestService {
         throw new Error('Quête non trouvée');
       }
 
-      if (!userQuest.completed) {
+      if (!userQuest.isCompleted) {
         throw new Error('Quête non complétée');
       }
 
-      if (userQuest.rewardClaimed) {
-        throw new Error('Récompense déjà réclamée');
-      }
+      // Récupérer les récompenses depuis le JSON
+      const reward = userQuest.quest.reward as any;
+      const coins = reward?.coins || 0;
+      const experience = reward?.experience || 0;
 
       // Donner les coins
-      await prisma.user.update({
-        where: { id: userId },
-        data: {
-          coins: { increment: userQuest.quest.coinsReward },
-        },
-      });
+      if (coins > 0) {
+        await prisma.user.update({
+          where: { id: parseInt(userId) },
+          data: {
+            coins: { increment: coins },
+          },
+        });
+      }
 
-      // Ajouter l'XP avec le système de level
-      const levelResult = await levelService.addXp(userId, userQuest.quest.xpReward);
+      // Ajouter l'XP
+      let levelResult = null;
+      if (experience > 0) {
+        levelResult = await levelService.addXp(userId, experience);
+      }
 
-      // Marquer la récompense comme réclamée
-      await prisma.userQuest.update({
+      // Supprimer la quête (ou marquer comme réclamée si tu veux garder l'historique)
+      await prisma.userQuest.delete({
         where: { id: userQuest.id },
-        data: { rewardClaimed: true },
       });
 
-      console.log(`🎁 Récompense réclamée: ${userQuest.quest.name} → ${userQuest.quest.xpReward} XP + ${userQuest.quest.coinsReward} coins`);
+      console.log(`🎁 Récompense réclamée: ${userQuest.quest.title} → ${experience} XP + ${coins} coins`);
 
-      if (levelResult.leveledUp) {
+      if (levelResult?.leveledUp) {
         console.log(`🎊 ${userQuest.user.username} a atteint le niveau ${levelResult.newLevel}!`);
       }
 
       return {
-        xp: userQuest.quest.xpReward,
-        coins: userQuest.quest.coinsReward,
-        item: userQuest.quest.itemReward,
-        badge: userQuest.quest.badgeReward,
-        levelUp: levelResult.leveledUp ? {
+        xp: experience,
+        coins: coins,
+        levelUp: levelResult?.leveledUp ? {
           oldLevel: levelResult.oldLevel,
           newLevel: levelResult.newLevel,
-          currentXp: levelResult.currentXp,
-          xpForNextLevel: levelResult.xpForNextLevel,
         } : null,
       };
     } catch (error) {
-      console.error('Erreur lors de la réclamation de récompense:', error);
+      console.error('Erreur réclamation récompense:', error);
       throw error;
     }
   }
 
   /**
-   * Reset les quêtes daily (à exécuter chaque jour à minuit)
+   * Reset les quêtes daily
    */
   async resetDailyQuests() {
     try {
       const dailyQuests = await prisma.quest.findMany({
         where: {
-          type: QuestType.DAILY,
-          resetTime: ResetTime.DAILY,
+          type: 'daily',
           isActive: true,
         },
       });
 
       for (const quest of dailyQuests) {
         await prisma.userQuest.updateMany({
-          where: {
-            questId: quest.id,
-          },
+          where: { questId: quest.id },
           data: {
             progress: 0,
-            completed: false,
+            isCompleted: false,
             completedAt: null,
-            rewardClaimed: false,
-            lastReset: new Date(),
           },
         });
       }
 
       console.log(`🔄 ${dailyQuests.length} quêtes daily reset`);
     } catch (error) {
-      console.error('Erreur lors du reset des quêtes daily:', error);
-      throw error;
+      console.error('Erreur reset daily:', error);
     }
   }
 
   /**
-   * Reset les quêtes weekly (à exécuter chaque lundi)
+   * Reset les quêtes weekly
    */
   async resetWeeklyQuests() {
     try {
       const weeklyQuests = await prisma.quest.findMany({
         where: {
-          type: QuestType.WEEKLY,
-          resetTime: ResetTime.WEEKLY,
+          type: 'weekly',
           isActive: true,
         },
       });
 
       for (const quest of weeklyQuests) {
         await prisma.userQuest.updateMany({
-          where: {
-            questId: quest.id,
-          },
+          where: { questId: quest.id },
           data: {
             progress: 0,
-            completed: false,
+            isCompleted: false,
             completedAt: null,
-            rewardClaimed: false,
-            lastReset: new Date(),
           },
         });
       }
 
       console.log(`🔄 ${weeklyQuests.length} quêtes weekly reset`);
     } catch (error) {
-      console.error('Erreur lors du reset des quêtes weekly:', error);
-      throw error;
+      console.error('Erreur reset weekly:', error);
     }
   }
 
   /**
-   * Vérifier et assigner les quêtes manquantes à tous les utilisateurs
+   * Assigner les quêtes manquantes
    */
   async ensureUserHasQuests(userId: string) {
     try {
-      // Assigner tutorial si pas déjà fait
       const tutorialCount = await prisma.userQuest.count({
         where: {
-          userId,
-          quest: { type: QuestType.TUTORIAL },
+          userId: parseInt(userId),
+          quest: { type: 'tutorial' },
         },
       });
 
@@ -507,10 +342,9 @@ export class QuestService {
         await this.assignTutorialQuests(userId);
       }
 
-      // Assigner daily/weekly
       await this.assignDailyWeeklyQuests(userId);
     } catch (error) {
-      console.error('Erreur lors de l\'assignation des quêtes:', error);
+      console.error('Erreur assignation quêtes:', error);
     }
   }
 }
