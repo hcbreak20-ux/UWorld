@@ -195,3 +195,47 @@
   border-color: rgba(139, 92, 246, 0.5);
   transform: scale(1.1);
 }
+
+/* Résultat de commande admin */
+.command-result {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  padding: 12px 15px;
+  margin-bottom: 5px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  animation: slideUp 0.3s ease;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.command-result.success {
+  background: rgba(46, 204, 113, 0.9);
+  color: white;
+  border: 2px solid #27ae60;
+}
+
+.command-result.error {
+  background: rgba(231, 76, 60, 0.9);
+  color: white;
+  border: 2px solid #c0392b;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Position du container pour le résultat */
+.chat-input-container {
+  position: relative;
+}

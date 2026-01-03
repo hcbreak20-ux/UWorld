@@ -13,6 +13,7 @@ import { ExperienceBar } from '@/components/ExperienceBar';
 import { ChatInput } from '@/components/ChatInput';
 import { MessagesPanel } from '@/components/MessagesPanel';
 import { Toast } from '@/components/Toast';
+import { AdminPanel } from '../components/AdminPanel';
 
 export const LobbyPage: React.FC = () => {
   const navigate = useNavigate();
@@ -24,6 +25,7 @@ export const LobbyPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [showMessages, setShowMessages] = useState(false);
   const [messageUserId, setMessageUserId] = useState<string | null>(null);
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
   
   // États pour notifications
   const [unreadCount, setUnreadCount] = useState(0);
@@ -32,25 +34,26 @@ export const LobbyPage: React.FC = () => {
     username?: string;
   } | null>(null);
 
-  // ✅ NOUVEAU: Fonction pour jouer le son de notification
+  // Récupérer le rôle de l'utilisateur
+  const userRole = user?.role || 'user';
+
   const playNotificationSound = () => {
     try {
       const audio = new Audio('/notification.mp3');
-      audio.volume = 0.5; // Volume à 50%
+      audio.volume = 0.5;
       
       audio.play()
         .then(() => console.log('🔊 Son joué'))
         .catch(() => {
           console.log('⚠️ Son bloqué, utilisation du fallback');
-          playBeep(); // Fallback si bloqué par le navigateur
+          playBeep();
         });
     } catch (err) {
       console.error('❌ Erreur lecture son:', err);
-      playBeep(); // Fallback en cas d'erreur
+      playBeep();
     }
   };
 
-  // ✅ NOUVEAU: Fallback - Générer un bip avec Web Audio API
   const playBeep = () => {
     try {
       const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -60,7 +63,7 @@ export const LobbyPage: React.FC = () => {
       oscillator.connect(gainNode);
       gainNode.connect(audioContext.destination);
       
-      oscillator.frequency.value = 800; // Fréquence 800Hz
+      oscillator.frequency.value = 800;
       oscillator.type = 'sine';
       
       gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
@@ -75,7 +78,6 @@ export const LobbyPage: React.FC = () => {
     }
   };
 
-  // Charger le compteur de messages non lus
   const loadUnreadCount = async () => {
     try {
       const response = await api.get('/messages/unread/count');
@@ -93,25 +95,20 @@ export const LobbyPage: React.FC = () => {
       }
 
       try {
-        // Charger les infos utilisateur si nécessaire
         if (!user) {
           const userData = await authAPI.getMe();
           setUser(userData);
         }
 
-        // Connecter Socket.IO
         socketService.connect(token);
 
-        // Charger les salles publiques
         const publicRooms = await roomAPI.getPublicRooms();
         setRooms(publicRooms);
 
-        // Auto-join première salle publique ou créer une salle par défaut
         if (publicRooms.length > 0) {
           setCurrentRoom(publicRooms[0]);
         }
 
-        // Charger le compteur de messages non lus
         loadUnreadCount();
 
         setLoading(false);
@@ -129,7 +126,6 @@ export const LobbyPage: React.FC = () => {
     };
   }, []);
 
-  // ✅ MODIFIÉ: Écouter les notifications de messages privés avec le nouveau système de son
   useEffect(() => {
     const handlePrivateMessage = (data: {
       messageId: string;
@@ -139,16 +135,13 @@ export const LobbyPage: React.FC = () => {
     }) => {
       console.log('📩 Notification message privé:', data);
       
-      // Incrémenter le compteur
       setUnreadCount(prev => prev + 1);
       
-      // Afficher le toast
       setToast({
         message: data.content,
         username: data.from.username
       });
       
-      // ✅ NOUVEAU: Jouer le son avec le système amélioré
       playNotificationSound();
     };
 
@@ -164,7 +157,6 @@ export const LobbyPage: React.FC = () => {
     };
   }, []);
 
-  // Écouter l'événement d'ouverture des messages
   useEffect(() => {
     const handleOpenMessages = (e: any) => {
       setMessageUserId(e.detail.userId);
@@ -180,7 +172,6 @@ export const LobbyPage: React.FC = () => {
 
   useEffect(() => {
     if (!loading && currentRoom && !gameRef.current) {
-      // Initialiser Phaser
       gameRef.current = createPhaserGame('game-container');
     }
 
@@ -202,10 +193,8 @@ export const LobbyPage: React.FC = () => {
     navigate('/login');
   };
 
-  // Rafraîchir le compteur quand on ouvre la messagerie
   const handleOpenMessages = () => {
     setShowMessages(true);
-    // Rafraîchir le compteur après 1 seconde (temps de charger les messages)
     setTimeout(() => {
       loadUnreadCount();
     }, 1000);
@@ -224,27 +213,23 @@ export const LobbyPage: React.FC = () => {
     <div className="lobby-page">
       <div className="lobby-header">
         <div className="header-left">
-          {/* Logo UWorld */}
           <img src="/uworld-logo.png" alt="UWorld" className="header-logo" />
           <h1>UWorld</h1>
         </div>
 
         <div className="header-actions">
-          {/* uCoins */}
           <div className="header-currency">
             <span className="currency-icon">🪙</span>
             <span className="currency-amount">{user?.coins.toLocaleString() || 0}</span>
             <span className="currency-label">uCoins</span>
           </div>
           
-          {/* uNuggets */}
           <div className="header-currency">
             <span className="currency-icon">🥇</span>
             <span className="currency-amount">{user?.gems.toLocaleString() || 0}</span>
             <span className="currency-label">uNuggets</span>
           </div>
 
-          {/* Bouton Messages avec badge */}
           <button 
             onClick={handleOpenMessages}
             className="messages-btn"
@@ -255,13 +240,22 @@ export const LobbyPage: React.FC = () => {
               <span className="unread-badge">{unreadCount > 99 ? '99+' : unreadCount}</span>
             )}
           </button>
+
+          {/* ✅ NOUVEAU: Bouton Admin */}
+          {(userRole === 'moderator' || userRole === 'admin' || userRole === 'owner') && (
+            <button 
+              className="admin-button"
+              onClick={() => setShowAdminPanel(true)}
+            >
+              👑 Admin
+            </button>
+          )}
           
           <button onClick={handleLogout}>🚪 Déconnexion</button>
         </div>
       </div>
 
       <div className="lobby-content">
-        {/* Panneau gauche avec liste des salles */}
         {showRoomList && (
           <div className="left-panel">
             <RoomList rooms={rooms} onJoinRoom={handleJoinRoom} />
@@ -277,36 +271,40 @@ export const LobbyPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Inventaire avec bouton Salles */}
       <InventoryPanel 
         showRoomList={showRoomList}
         onToggleRoomList={() => setShowRoomList(!showRoomList)}
       />
 
-      {/* Barre d'expérience */}
       <ExperienceBar />
 
-      {/* Nouvelle barre de chat */}
-      <ChatInput />
+      {/* ✅ ChatInput avec le rôle passé en props */}
+      <ChatInput userRole={userRole} />
 
-      {/* Messagerie */}
       {showMessages && (
         <MessagesPanel
           onClose={() => {
             setShowMessages(false);
             setMessageUserId(null);
-            loadUnreadCount(); // Rafraîchir le compteur
+            loadUnreadCount();
           }}
           initialUserId={messageUserId}
         />
       )}
 
-      {/* Toast de notification */}
       {toast && (
         <Toast
           message={toast.message}
           username={toast.username}
           onClose={() => setToast(null)}
+        />
+      )}
+
+      {/* ✅ NOUVEAU: Panel Admin */}
+      {showAdminPanel && (
+        <AdminPanel 
+          onClose={() => setShowAdminPanel(false)}
+          userRole={userRole}
         />
       )}
     </div>

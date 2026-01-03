@@ -1,36 +1,82 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useStore } from '@/store';
 import { socketService } from '@/services/socket';
+import { executeAdminCommand } from '@/utils/adminCommands'; // ✅ NOUVEAU
 import './ChatInput.css';
 
 type ChatMode = 'normal' | 'shout' | 'whisper';
 
 const EMOJIS = ['😀', '😂', '❤️', '👍', '🎉', '🔥', '✨', '💯', '👋', '🎮'];
 
-export const ChatInput: React.FC = () => {
+// ✅ NOUVEAU: Props avec userRole
+interface ChatInputProps {
+  userRole?: string;
+}
+
+export const ChatInput: React.FC<ChatInputProps> = ({ userRole = 'user' }) => {
   const { setChatInputFocused, players, user } = useStore();
   const [inputMessage, setInputMessage] = useState('');
   const [chatMode, setChatMode] = useState<ChatMode>('normal');
   const [whisperTarget, setWhisperTarget] = useState<string>('');
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showModeDropdown, setShowModeDropdown] = useState(false);
+  const [commandResult, setCommandResult] = useState<string | null>(null); // ✅ NOUVEAU
   
-  const inputRef = useRef<HTMLInputElement>(null); // ✅ Nouveau ref
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  // ✅ Focus automatique au montage
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
 
-  // Récupérer la liste des joueurs pour le whisper
+  // ✅ NOUVEAU: Masquer le résultat de commande après 5 secondes
+  useEffect(() => {
+    if (commandResult) {
+      const timer = setTimeout(() => {
+        setCommandResult(null);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [commandResult]);
+
   const otherPlayers = Object.entries(players)
     .filter(([userId]) => userId !== user?.id)
     .map(([userId, player]) => ({ userId, username: player.username }));
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!inputMessage.trim()) return;
+
+    // ✅ NOUVEAU: Vérifier si c'est une commande admin
+    if (inputMessage.startsWith(':')) {
+      const socket = socketService.getSocket();
+      
+      if (!socket) {
+        setCommandResult('❌ Socket non connecté');
+        setInputMessage('');
+        return;
+      }
+
+      try {
+        const result = await executeAdminCommand(inputMessage, userRole, socket);
+        
+        if (result) {
+          setCommandResult(result);
+          
+          // Afficher aussi dans la console pour debug
+          console.log('📋 Résultat commande:', result);
+        }
+      } catch (error) {
+        console.error('Erreur commande admin:', error);
+        setCommandResult('❌ Erreur lors de l\'exécution de la commande');
+      }
+      
+      setInputMessage('');
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 0);
+      return;
+    }
 
     // Vérifier si whisper nécessite une cible
     if (chatMode === 'whisper' && !whisperTarget) {
@@ -38,12 +84,11 @@ export const ChatInput: React.FC = () => {
       return;
     }
 
-    // Envoyer le message avec le type
+    // Envoyer le message normal
     socketService.sendMessage(inputMessage.trim(), chatMode, whisperTarget);
     setInputMessage('');
     setShowEmojiPicker(false);
     
-    // ✅ Re-focus l'input après envoi
     setTimeout(() => {
       inputRef.current?.focus();
     }, 0);
@@ -52,7 +97,6 @@ export const ChatInput: React.FC = () => {
   const addEmoji = (emoji: string) => {
     setInputMessage(prev => prev + emoji);
     setShowEmojiPicker(false);
-    // ✅ Re-focus après emoji
     setTimeout(() => {
       inputRef.current?.focus();
     }, 0);
@@ -72,7 +116,6 @@ export const ChatInput: React.FC = () => {
     if (mode !== 'whisper') {
       setWhisperTarget('');
     }
-    // ✅ Re-focus après changement de mode
     setTimeout(() => {
       inputRef.current?.focus();
     }, 0);
@@ -80,17 +123,26 @@ export const ChatInput: React.FC = () => {
 
   return (
     <div className="chat-input-container">
+      {/* ✅ NOUVEAU: Affichage du résultat de commande */}
+      {commandResult && (
+        <div className={`command-result ${commandResult.startsWith('✅') ? 'success' : 'error'}`}>
+          {commandResult}
+        </div>
+      )}
+
       <form className="chat-input-form" onSubmit={handleSubmit}>
         {/* Input principal */}
         <input
-          ref={inputRef} // ✅ Ajout du ref
+          ref={inputRef}
           type="text"
           value={inputMessage}
           onChange={(e) => setInputMessage(e.target.value)}
           onFocus={() => setChatInputFocused(true)}
           onBlur={() => setChatInputFocused(false)}
           placeholder={
-            chatMode === 'whisper' 
+            inputMessage.startsWith(':')
+              ? 'Commande admin... (ex: :ban user 1h raison)'
+              : chatMode === 'whisper' 
               ? `Chuchoter à ${whisperTarget || '...'}` 
               : chatMode === 'shout' 
               ? 'Crier dans toute la salle...' 

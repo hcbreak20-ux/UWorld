@@ -1,160 +1,701 @@
 import { Router } from 'express';
-import { authMiddleware, AuthRequest } from '../middleware/auth';
-// ✅ NOUVEAU
-import { prisma } from '../lib/prisma';
+import { prisma } from '../db';
+import { 
+  requireRole, 
+  requirePermission,
+  UserRole,
+  canActOnTarget,
+  validateDuration,
+  parseDuration,
+  formatDuration
+} from '../middleware/admin.middleware';
 
 const router = Router();
 
-// Middleware pour vérifier si l'utilisateur est admin
-const requireAdmin = async (req: AuthRequest, res: any, next: any) => {
+// ==================
+// MODÉRATION
+// ==================
+
+/**
+ * Bannir un joueur
+ * POST /api/admin/ban
+ */
+router.post('/ban', requirePermission('ban_temporary'), async (req, res) => {
+  const { targetUsername, duration, reason } = req.body;
+  const admin = (req as any).user;
+  
   try {
-    const user = await prisma.user.findUnique({
-      where: { id: req.user!.userId },
-      select: { isAdmin: true },
-    });
-
-    if (!user || !user.isAdmin) {
-      return res.status(403).json({ message: 'Accès refusé: Administrateur requis' });
+    // Validation
+    if (!targetUsername || !duration || !reason) {
+      return res.status(400).json({ 
+        error: 'Paramètres manquants',
+        required: ['targetUsername', 'duration', 'reason']
+      });
     }
-
-    next();
+    
+    // Trouver l'utilisateur cible
+    const target = await prisma.user.findUnique({
+      where: { username: targetUsername }
+    });
+    
+    if (!target) {
+      return res.status(404).json({ error: 'Utilisateur introuvable' });
+    }
+    
+    // Vérifier la hiérarchie
+    if (!canActOnTarget(admin.role as UserRole, target.role as UserRole)) {
+      return res.status(403).json({ 
+        error: 'Impossible de bannir un utilisateur de rang égal ou supérieur' 
+      });
+    }
+    
+    // Vérifier la durée selon le rôle
+    const durationCheck = validateDuration(admin.role as UserRole, duration);
+    if (!durationCheck.valid) {
+      return res.status(403).json({ error: durationCheck.error });
+    }
+    
+    // Calculer la date d'expiration
+    let banExpiresAt = null;
+    if (duration !== 'permanent') {
+      const durationMs = parseDuration(duration);
+      banExpiresAt = new Date(Date.now() + durationMs);
+    }
+    
+    // Bannir l'utilisateur
+    await prisma.user.update({
+      where: { id: target.id },
+      data: {
+        isBanned: true,
+        banExpiresAt,
+        banReason: reason
+      }
+    });
+    
+    // Logger l'action
+    await prisma.adminLog.create({
+      data: {
+        adminId: admin.id,
+        targetUserId: target.id,
+        action: 'ban',
+        reason,
+        details: {
+          duration,
+          expiresAt: banExpiresAt,
+          permanent: duration === 'permanent'
+        }
+      }
+    });
+    
+    res.json({ 
+      success: true,
+      message: `${targetUsername} a été banni`,
+      duration: duration,
+      expiresAt: banExpiresAt,
+      reason
+    });
+    
   } catch (error) {
-    console.error('Erreur vérification admin:', error);
-    res.status(500).json({ message: 'Erreur serveur' });
+    console.error('Erreur ban:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
   }
-};
-
-// GET /api/admin/floor-types - Obtenir tous les types de sol disponibles
-router.get('/floor-types', authMiddleware, requireAdmin, (req, res) => {
-  const floorTypes = [
-    { id: 'wooden', name: 'Parquet en bois', category: 'classic' },
-    { id: 'checkered_gray', name: 'Damier gris', category: 'classic' },
-    { id: 'checkered_blue', name: 'Damier bleu', category: 'classic' },
-    { id: 'checkered_green', name: 'Damier vert', category: 'classic' },
-    { id: 'marble', name: 'Marbre blanc', category: 'luxury' },
-    { id: 'carpet_red', name: 'Tapis rouge', category: 'carpet' },
-    { id: 'carpet_blue', name: 'Tapis bleu', category: 'carpet' },
-    { id: 'carpet_purple', name: 'Tapis violet', category: 'carpet' },
-    { id: 'carpet_gold', name: 'Tapis doré', category: 'carpet' },
-    { id: 'grass', name: 'Herbe', category: 'outdoor' },
-    { id: 'water', name: 'Eau', category: 'outdoor' },
-    { id: 'stone', name: 'Pierre', category: 'outdoor' },
-  ];
-
-  res.json({ floorTypes });
 });
 
-// GET /api/admin/rooms - Obtenir toutes les salles (pour administration)
-router.get('/rooms', authMiddleware, requireAdmin, async (req, res) => {
+/**
+ * Débannir un joueur
+ * POST /api/admin/unban
+ */
+router.post('/unban', requirePermission('unban'), async (req, res) => {
+  const { targetUsername } = req.body;
+  const admin = (req as any).user;
+  
   try {
-    const rooms = await prisma.room.findMany({
-      select: {
-        id: true,
-        name: true,
-        description: true,
-        isPublic: true,
-        floor: true,
-        wallpaper: true,
-        owner: {
-          select: {
-            username: true,
-          },
+    const target = await prisma.user.findUnique({
+      where: { username: targetUsername }
+    });
+    
+    if (!target) {
+      return res.status(404).json({ error: 'Utilisateur introuvable' });
+    }
+    
+    if (!target.isBanned) {
+      return res.status(400).json({ error: 'Cet utilisateur n\'est pas banni' });
+    }
+    
+    await prisma.user.update({
+      where: { id: target.id },
+      data: {
+        isBanned: false,
+        banExpiresAt: null,
+        banReason: null
+      }
+    });
+    
+    await prisma.adminLog.create({
+      data: {
+        adminId: admin.id,
+        targetUserId: target.id,
+        action: 'unban',
+        reason: `Débanni par ${admin.username}`
+      }
+    });
+    
+    res.json({ 
+      success: true, 
+      message: `${targetUsername} a été débanni` 
+    });
+    
+  } catch (error) {
+    console.error('Erreur unban:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+/**
+ * Mute un joueur
+ * POST /api/admin/mute
+ */
+router.post('/mute', requirePermission('mute_temporary'), async (req, res) => {
+  const { targetUsername, duration, reason } = req.body;
+  const admin = (req as any).user;
+  
+  try {
+    if (!targetUsername || !duration || !reason) {
+      return res.status(400).json({ error: 'Paramètres manquants' });
+    }
+    
+    const target = await prisma.user.findUnique({
+      where: { username: targetUsername }
+    });
+    
+    if (!target) {
+      return res.status(404).json({ error: 'Utilisateur introuvable' });
+    }
+    
+    if (!canActOnTarget(admin.role as UserRole, target.role as UserRole)) {
+      return res.status(403).json({ 
+        error: 'Impossible de mute un utilisateur de rang égal ou supérieur' 
+      });
+    }
+    
+    const durationCheck = validateDuration(admin.role as UserRole, duration);
+    if (!durationCheck.valid) {
+      return res.status(403).json({ error: durationCheck.error });
+    }
+    
+    let muteExpiresAt = null;
+    if (duration !== 'permanent') {
+      const durationMs = parseDuration(duration);
+      muteExpiresAt = new Date(Date.now() + durationMs);
+    }
+    
+    await prisma.user.update({
+      where: { id: target.id },
+      data: {
+        isMuted: true,
+        muteExpiresAt,
+        muteReason: reason
+      }
+    });
+    
+    await prisma.adminLog.create({
+      data: {
+        adminId: admin.id,
+        targetUserId: target.id,
+        action: 'mute',
+        reason,
+        details: {
+          duration,
+          expiresAt: muteExpiresAt
+        }
+      }
+    });
+    
+    res.json({ 
+      success: true,
+      message: `${targetUsername} a été mute`,
+      duration,
+      expiresAt: muteExpiresAt
+    });
+    
+  } catch (error) {
+    console.error('Erreur mute:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+/**
+ * Unmute un joueur
+ * POST /api/admin/unmute
+ */
+router.post('/unmute', requirePermission('unmute'), async (req, res) => {
+  const { targetUsername } = req.body;
+  const admin = (req as any).user;
+  
+  try {
+    const target = await prisma.user.findUnique({
+      where: { username: targetUsername }
+    });
+    
+    if (!target) {
+      return res.status(404).json({ error: 'Utilisateur introuvable' });
+    }
+    
+    await prisma.user.update({
+      where: { id: target.id },
+      data: {
+        isMuted: false,
+        muteExpiresAt: null,
+        muteReason: null
+      }
+    });
+    
+    await prisma.adminLog.create({
+      data: {
+        adminId: admin.id,
+        targetUserId: target.id,
+        action: 'unmute',
+        reason: `Unmute par ${admin.username}`
+      }
+    });
+    
+    res.json({ success: true, message: `${targetUsername} peut à nouveau parler` });
+    
+  } catch (error) {
+    console.error('Erreur unmute:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+/**
+ * Avertir un joueur
+ * POST /api/admin/warn
+ */
+router.post('/warn', requirePermission('warn'), async (req, res) => {
+  const { targetUsername, reason } = req.body;
+  const admin = (req as any).user;
+  
+  try {
+    const target = await prisma.user.findUnique({
+      where: { username: targetUsername }
+    });
+    
+    if (!target) {
+      return res.status(404).json({ error: 'Utilisateur introuvable' });
+    }
+    
+    // Incrémenter les warnings
+    const updated = await prisma.user.update({
+      where: { id: target.id },
+      data: {
+        warnings: { increment: 1 }
+      }
+    });
+    
+    await prisma.adminLog.create({
+      data: {
+        adminId: admin.id,
+        targetUserId: target.id,
+        action: 'warn',
+        reason,
+        details: {
+          warningCount: updated.warnings
+        }
+      }
+    });
+    
+    res.json({ 
+      success: true,
+      message: `${targetUsername} a été averti`,
+      warnings: updated.warnings
+    });
+    
+  } catch (error) {
+    console.error('Erreur warn:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// ==================
+// BADGES
+// ==================
+
+/**
+ * Donner un badge
+ * POST /api/admin/badge/give
+ */
+router.post('/badge/give', requirePermission('give_event_badges'), async (req, res) => {
+  const { targetUsername, badgeCode } = req.body;
+  const admin = (req as any).user;
+  
+  try {
+    if (!targetUsername || !badgeCode) {
+      return res.status(400).json({ error: 'Paramètres manquants' });
+    }
+    
+    const target = await prisma.user.findUnique({
+      where: { username: targetUsername }
+    });
+    
+    const badge = await prisma.badge.findUnique({
+      where: { code: badgeCode }
+    });
+    
+    if (!target || !badge) {
+      return res.status(404).json({ error: 'Utilisateur ou badge introuvable' });
+    }
+    
+    // Vérifier si le badge est admin-only
+    if (badge.isAdminOnly && admin.role !== 'admin' && admin.role !== 'owner') {
+      return res.status(403).json({ 
+        error: 'Seuls les admins peuvent donner ce badge' 
+      });
+    }
+    
+    // Vérifier si l'utilisateur a déjà le badge
+    const existing = await prisma.userBadge.findUnique({
+      where: {
+        userId_badgeId: {
+          userId: target.id,
+          badgeId: badge.id
+        }
+      }
+    });
+    
+    if (existing) {
+      return res.status(400).json({ 
+        error: `${targetUsername} possède déjà ce badge` 
+      });
+    }
+    
+    // Donner le badge
+    await prisma.userBadge.create({
+      data: {
+        userId: target.id,
+        badgeId: badge.id,
+        givenBy: admin.id
+      }
+    });
+    
+    await prisma.adminLog.create({
+      data: {
+        adminId: admin.id,
+        targetUserId: target.id,
+        action: 'give_badge',
+        details: { 
+          badgeCode,
+          badgeName: badge.name
+        }
+      }
+    });
+    
+    res.json({ 
+      success: true, 
+      message: `Badge "${badge.name}" donné à ${targetUsername}` 
+    });
+    
+  } catch (error) {
+    console.error('Erreur give badge:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+/**
+ * Retirer un badge
+ * POST /api/admin/badge/remove
+ */
+router.post('/badge/remove', requirePermission('remove_badge'), async (req, res) => {
+  const { targetUsername, badgeCode } = req.body;
+  const admin = (req as any).user;
+  
+  try {
+    const target = await prisma.user.findUnique({
+      where: { username: targetUsername }
+    });
+    
+    const badge = await prisma.badge.findUnique({
+      where: { code: badgeCode }
+    });
+    
+    if (!target || !badge) {
+      return res.status(404).json({ error: 'Utilisateur ou badge introuvable' });
+    }
+    
+    const userBadge = await prisma.userBadge.findUnique({
+      where: {
+        userId_badgeId: {
+          userId: target.id,
+          badgeId: badge.id
+        }
+      }
+    });
+    
+    if (!userBadge) {
+      return res.status(404).json({ 
+        error: `${targetUsername} ne possède pas ce badge` 
+      });
+    }
+    
+    await prisma.userBadge.delete({
+      where: {
+        userId_badgeId: {
+          userId: target.id,
+          badgeId: badge.id
+        }
+      }
+    });
+    
+    await prisma.adminLog.create({
+      data: {
+        adminId: admin.id,
+        targetUserId: target.id,
+        action: 'remove_badge',
+        details: { 
+          badgeCode,
+          badgeName: badge.name
+        }
+      }
+    });
+    
+    res.json({ 
+      success: true, 
+      message: `Badge "${badge.name}" retiré à ${targetUsername}` 
+    });
+    
+  } catch (error) {
+    console.error('Erreur remove badge:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// ==================
+// ÉCONOMIE
+// ==================
+
+/**
+ * Donner des uCoins
+ * POST /api/admin/coins/give
+ */
+router.post('/coins/give', requirePermission('give_coins'), async (req, res) => {
+  const { targetUsername, amount } = req.body;
+  const admin = (req as any).user;
+  
+  try {
+    if (!targetUsername || !amount || amount <= 0) {
+      return res.status(400).json({ error: 'Paramètres invalides' });
+    }
+    
+    const target = await prisma.user.findUnique({
+      where: { username: targetUsername }
+    });
+    
+    if (!target) {
+      return res.status(404).json({ error: 'Utilisateur introuvable' });
+    }
+    
+    const updated = await prisma.user.update({
+      where: { id: target.id },
+      data: {
+        coins: { increment: amount }
+      }
+    });
+    
+    await prisma.adminLog.create({
+      data: {
+        adminId: admin.id,
+        targetUserId: target.id,
+        action: 'give_coins',
+        details: { 
+          amount,
+          newBalance: updated.coins
+        }
+      }
+    });
+    
+    res.json({ 
+      success: true, 
+      message: `${amount} uCoins donnés à ${targetUsername}`,
+      newBalance: updated.coins
+    });
+    
+  } catch (error) {
+    console.error('Erreur give coins:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+/**
+ * Donner des uNuggets
+ * POST /api/admin/nuggets/give
+ */
+router.post('/nuggets/give', requirePermission('give_nuggets'), async (req, res) => {
+  const { targetUsername, amount } = req.body;
+  const admin = (req as any).user;
+  
+  try {
+    if (!targetUsername || !amount || amount <= 0) {
+      return res.status(400).json({ error: 'Paramètres invalides' });
+    }
+    
+    const target = await prisma.user.findUnique({
+      where: { username: targetUsername }
+    });
+    
+    if (!target) {
+      return res.status(404).json({ error: 'Utilisateur introuvable' });
+    }
+    
+    const updated = await prisma.user.update({
+      where: { id: target.id },
+      data: {
+        gems: { increment: amount }
+      }
+    });
+    
+    await prisma.adminLog.create({
+      data: {
+        adminId: admin.id,
+        targetUserId: target.id,
+        action: 'give_nuggets',
+        details: { 
+          amount,
+          newBalance: updated.gems
+        }
+      }
+    });
+    
+    res.json({ 
+      success: true, 
+      message: `${amount} uNuggets donnés à ${targetUsername}`,
+      newBalance: updated.gems
+    });
+    
+  } catch (error) {
+    console.error('Erreur give nuggets:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// ==================
+// INFORMATIONS
+// ==================
+
+/**
+ * Obtenir les infos d'un joueur
+ * GET /api/admin/user/:username
+ */
+router.get('/user/:username', requirePermission('view_user_info'), async (req, res) => {
+  const { username } = req.params;
+  
+  try {
+    const user = await prisma.user.findUnique({
+      where: { username },
+      include: {
+        badges: {
+          include: {
+            badge: true
+          }
         },
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
+        adminLogs: {
+          take: 10,
+          orderBy: { createdAt: 'desc' },
+          include: {
+            admin: {
+              select: { username: true }
+            }
+          }
+        },
+        targetLogs: {
+          take: 10,
+          orderBy: { createdAt: 'desc' },
+          include: {
+            admin: {
+              select: { username: true }
+            }
+          }
+        }
+      }
     });
-
-    res.json({ rooms });
+    
+    if (!user) {
+      return res.status(404).json({ error: 'Utilisateur introuvable' });
+    }
+    
+    // Ne pas retourner le mot de passe
+    const { password, ...userInfo } = user;
+    
+    res.json(userInfo);
+    
   } catch (error) {
-    console.error('Erreur get rooms:', error);
-    res.status(500).json({ message: 'Erreur serveur' });
+    console.error('Erreur get user:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
-// PUT /api/admin/room/:roomId/floor - Changer le sol d'une salle
-router.put('/room/:roomId/floor', authMiddleware, requireAdmin, async (req, res) => {
+/**
+ * Statistiques globales
+ * GET /api/admin/stats
+ */
+router.get('/stats', requirePermission('view_stats'), async (req, res) => {
   try {
-    const { roomId } = req.params;
-    const { floorType } = req.body;
-
-    if (!floorType) {
-      return res.status(400).json({ message: 'Type de sol requis' });
-    }
-
-    // Vérifier que la salle existe
-    const room = await prisma.room.findUnique({
-      where: { id: roomId },
-    });
-
-    if (!room) {
-      return res.status(404).json({ message: 'Salle non trouvée' });
-    }
-
-    // Mettre à jour le sol
-    const updatedRoom = await prisma.room.update({
-      where: { id: roomId },
-      data: { floor: floorType },
-      select: {
-        id: true,
-        name: true,
-        floor: true,
-      },
-    });
-
-    res.json({
-      message: 'Sol mis à jour avec succès',
-      room: updatedRoom,
-    });
+    const [totalUsers, bannedUsers, totalBadges, totalLogs] = await Promise.all([
+      prisma.user.count(),
+      prisma.user.count({ where: { isBanned: true } }),
+      prisma.badge.count(),
+      prisma.adminLog.count()
+    ]);
+    
+    const stats = {
+      totalUsers,
+      bannedUsers,
+      mutedUsers: await prisma.user.count({ where: { isMuted: true } }),
+      totalBadges,
+      totalLogs,
+      totalRooms: await prisma.room.count(),
+      publicRooms: await prisma.room.count({ where: { isPublic: true } })
+    };
+    
+    res.json(stats);
+    
   } catch (error) {
-    console.error('Erreur update floor:', error);
-    res.status(500).json({ message: 'Erreur serveur' });
+    console.error('Erreur stats:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
-// PUT /api/admin/room/:roomId/wallpaper - Changer le papier peint d'une salle
-router.put('/room/:roomId/wallpaper', authMiddleware, requireAdmin, async (req, res) => {
+/**
+ * Logs admin
+ * GET /api/admin/logs
+ */
+router.get('/logs', requirePermission('view_all_logs'), async (req, res) => {
+  const { action, limit = 100, offset = 0 } = req.query;
+  
   try {
-    const { roomId } = req.params;
-    const { wallpaperType } = req.body;
-
-    if (!wallpaperType) {
-      return res.status(400).json({ message: 'Type de papier peint requis' });
+    const where: any = {};
+    if (action) {
+      where.action = action;
     }
-
-    const updatedRoom = await prisma.room.update({
-      where: { id: roomId },
-      data: { wallpaper: wallpaperType },
-      select: {
-        id: true,
-        name: true,
-        wallpaper: true,
-      },
+    
+    const logs = await prisma.adminLog.findMany({
+      where,
+      take: Number(limit),
+      skip: Number(offset),
+      orderBy: { createdAt: 'desc' },
+      include: {
+        admin: {
+          select: { username: true, role: true }
+        },
+        targetUser: {
+          select: { username: true }
+        }
+      }
     });
-
-    res.json({
-      message: 'Papier peint mis à jour avec succès',
-      room: updatedRoom,
-    });
+    
+    res.json(logs);
+    
   } catch (error) {
-    console.error('Erreur update wallpaper:', error);
-    res.status(500).json({ message: 'Erreur serveur' });
-  }
-});
-
-// GET /api/admin/check - Vérifier si l'utilisateur est admin
-router.get('/check', authMiddleware, async (req: AuthRequest, res: any) => {
-  try {
-    const user = await prisma.user.findUnique({
-      where: { id: req.user!.userId },
-      select: { isAdmin: true },
-    });
-
-    res.json({ isAdmin: user?.isAdmin || false });
-  } catch (error) {
-    console.error('Erreur check admin:', error);
-    res.status(500).json({ message: 'Erreur serveur' });
+    console.error('Erreur logs:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
