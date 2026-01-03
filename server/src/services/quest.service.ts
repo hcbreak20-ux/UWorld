@@ -1,3 +1,4 @@
+import { QuestType } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { levelService } from './level.service';
 
@@ -9,16 +10,16 @@ export class QuestService {
     try {
       const tutorialQuests = await prisma.quest.findMany({
         where: {
-          type: 'tutorial',
+          type: QuestType.TUTORIAL,
           isActive: true,
         },
       });
 
       const userQuests = tutorialQuests.map((quest) => ({
-        userId: parseInt(userId),
+        userId: userId,
         questId: quest.id,
         progress: 0,
-        isCompleted: false,
+        completed: false,
       }));
 
       await prisma.userQuest.createMany({
@@ -41,25 +42,26 @@ export class QuestService {
     try {
       const quests = await prisma.quest.findMany({
         where: {
-          type: { in: ['daily', 'weekly'] },
+          type: { in: [QuestType.DAILY, QuestType.WEEKLY] },
           isActive: true,
         },
       });
 
       for (const quest of quests) {
         await prisma.userQuest.upsert({
-          where: {
+          include: { quest: true, user: true },
+        where: {
             userId_questId: {
-              userId: parseInt(userId),
+              userId: userId,
               questId: quest.id,
             },
           },
           update: {},
           create: {
-            userId: parseInt(userId),
+            userId: userId,
             questId: quest.id,
             progress: 0,
-            isCompleted: false,
+            completed: false,
           },
         });
       }
@@ -77,7 +79,8 @@ export class QuestService {
   async getUserQuests(userId: string) {
     try {
       const userQuests = await prisma.userQuest.findMany({
-        where: { userId: parseInt(userId) },
+        include: { quest: true, user: true },
+        where: { userId: userId },
         include: {
           quest: true,
         },
@@ -104,7 +107,7 @@ export class QuestService {
           isActive: true,
           OR: [
             { description: { contains: targetType } },
-            { title: { contains: targetType } }
+            { name: { contains: targetType } }
           ]
         },
       });
@@ -117,9 +120,10 @@ export class QuestService {
         const targetCount = reward?.targetCount || 10;
 
         const userQuest = await prisma.userQuest.findUnique({
-          where: {
+          include: { quest: true, user: true },
+        where: {
             userId_questId: {
-              userId: parseInt(userId),
+              userId: userId,
               questId: quest.id,
             },
           },
@@ -128,17 +132,17 @@ export class QuestService {
         if (!userQuest) {
           await prisma.userQuest.create({
             data: {
-              userId: parseInt(userId),
+              userId: userId,
               questId: quest.id,
               progress: increment,
-              isCompleted: increment >= targetCount,
+              completed: increment >= targetCount,
               completedAt: increment >= targetCount ? new Date() : null,
             },
           });
           continue;
         }
 
-        if (userQuest.isCompleted) continue;
+        if (userQuest.completed) continue;
 
         const newProgress = userQuest.progress + increment;
         const isCompleted = newProgress >= targetCount;
@@ -147,15 +151,15 @@ export class QuestService {
           where: { id: userQuest.id },
           data: {
             progress: newProgress,
-            isCompleted: isCompleted,
+            completed: isCompleted,
             completedAt: isCompleted ? new Date() : null,
           },
         });
 
-        console.log(`📊 Progression: ${quest.title} → ${newProgress}/${targetCount}`);
+        console.log(`📊 Progression: ${quest.name} → ${newProgress}/${targetCount}`);
 
-        if (isCompleted && !userQuest.isCompleted) {
-          console.log(`🎉 Quête complétée: ${quest.title}`);
+        if (isCompleted && !userQuest.completed) {
+          console.log(`🎉 Quête complétée: ${quest.name}`);
         }
       }
     } catch (error) {
@@ -202,9 +206,10 @@ export class QuestService {
   async claimReward(userId: string, questId: number) {
     try {
       const userQuest = await prisma.userQuest.findUnique({
+        include: { quest: true, user: true },
         where: {
           userId_questId: {
-            userId: parseInt(userId),
+            userId: userId,
             questId: questId,
           },
         },
@@ -218,7 +223,7 @@ export class QuestService {
         throw new Error('Quête non trouvée');
       }
 
-      if (!userQuest.isCompleted) {
+      if (!userQuest.completed) {
         throw new Error('Quête non complétée');
       }
 
@@ -230,7 +235,7 @@ export class QuestService {
       // Donner les coins
       if (coins > 0) {
         await prisma.user.update({
-          where: { id: parseInt(userId) },
+          where: { id: userId },
           data: {
             coins: { increment: coins },
           },
@@ -248,7 +253,7 @@ export class QuestService {
         where: { id: userQuest.id },
       });
 
-      console.log(`🎁 Récompense réclamée: ${userQuest.quest.title} → ${experience} XP + ${coins} coins`);
+      console.log(`🎁 Récompense réclamée: ${userQuest.quest.name} → ${experience} XP + ${coins} coins`);
 
       if (levelResult?.leveledUp) {
         console.log(`🎊 ${userQuest.user.username} a atteint le niveau ${levelResult.newLevel}!`);
@@ -275,7 +280,7 @@ export class QuestService {
     try {
       const dailyQuests = await prisma.quest.findMany({
         where: {
-          type: 'daily',
+          type: QuestType.DAILY,
           isActive: true,
         },
       });
@@ -285,7 +290,7 @@ export class QuestService {
           where: { questId: quest.id },
           data: {
             progress: 0,
-            isCompleted: false,
+            completed: false,
             completedAt: null,
           },
         });
@@ -304,7 +309,7 @@ export class QuestService {
     try {
       const weeklyQuests = await prisma.quest.findMany({
         where: {
-          type: 'weekly',
+          type: QuestType.WEEKLY,
           isActive: true,
         },
       });
@@ -314,7 +319,7 @@ export class QuestService {
           where: { questId: quest.id },
           data: {
             progress: 0,
-            isCompleted: false,
+            completed: false,
             completedAt: null,
           },
         });
@@ -332,9 +337,10 @@ export class QuestService {
   async ensureUserHasQuests(userId: string) {
     try {
       const tutorialCount = await prisma.userQuest.count({
+        include: { quest: true, user: true },
         where: {
-          userId: parseInt(userId),
-          quest: { type: 'tutorial' },
+          userId: userId,
+          quest: { type: QuestType.TUTORIAL },
         },
       });
 
