@@ -1,4 +1,6 @@
-// Schéma Prisma pour Virtual World
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -8,229 +10,234 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id        String   @id @default(uuid())
-  username  String   @unique
-  email     String   @unique
-  password  String
-  coins     Int      @default(1000)
-  gems      Int      @default(0)
-  level     Int      @default(1)
-  experience Int     @default(0)
-  motto     String   @default("Je suis nouveau!")
-  avatar    Json     @default("{\"gender\":\"male\",\"headType\":1,\"hairStyle\":1,\"clothingStyle\":1,\"skinColor\":\"light\",\"hairColor\":\"brown\",\"clothingColor\":\"blue\",\"pantsColor\":\"blue\"}")
-  isAdmin   Boolean  @default(false)
-  
-  // ✅ Couleurs d'avatar
-  avatarSkinColor  String @default("#FFDCB1")  // Beige clair
-  avatarHairColor  String @default("#654321")  // Brun
-  avatarShirtColor String @default("#130a01ff")  // Brun foncé
-  avatarPantsColor String @default("#9c702dff")  // Brun pale
-  
-  // ✅ NOUVEAU: Badge actif affiché sur le profil
-  activeBadgeId String?
-  
-  // ✅ Badges et dates
-  badges      UserBadge[]
-  activeBadge Badge?    @relation("ActiveBadge", fields: [activeBadgeId], references: [id])
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  lastLogin   DateTime  @default(now())
-  
-  // ✅ Relations
-  ownedRooms Room[]   @relation("RoomOwner")
-  messages   Message[]
-  userQuests UserQuest[]
-  sentMessages     PrivateMessage[] @relation("SentMessages")
-  receivedMessages PrivateMessage[] @relation("ReceivedMessages")
+// ==================
+// MODÈLE USER (MODIFIÉ)
+// ==================
 
+model User {
+  id            Int       @id @default(autoincrement())
+  username      String    @unique
+  email         String    @unique
+  password      String
+  
+  // Avatar
+  avatar        Json?
+  
+  // Économie
+  coins         Int       @default(0)
+  gems          Int       @default(0)
+  
+  // Expérience
+  experience    Int       @default(0)
+  level         Int       @default(1)
+  
+  // ✅ NOUVEAU: Système admin
+  role          String    @default("user")  // user, vip, room_designer, community_manager, moderator, admin, owner
+  
+  // ✅ NOUVEAU: Bannissement
+  isBanned      Boolean   @default(false)
+  banExpiresAt  DateTime?
+  banReason     String?
+  
+  // ✅ NOUVEAU: Mute
+  isMuted       Boolean   @default(false)
+  muteExpiresAt DateTime?
+  muteReason    String?
+  
+  // ✅ NOUVEAU: Avertissements
+  warnings      Int       @default(0)
+  
+  // ✅ NOUVEAU: Mode invisible (ghost)
+  isInvisible   Boolean   @default(false)
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Relations
+  rooms         Room[]
+  messages      Message[]
+  quests        UserQuest[]
+  badges        UserBadge[]
+  adminLogs     AdminLog[] @relation("AdminActions")
+  targetLogs    AdminLog[] @relation("TargetUser")
+  privateMessagesFrom PrivateMessage[] @relation("MessageFrom")
+  privateMessagesTo   PrivateMessage[] @relation("MessageTo")
+  
   @@index([username])
-  @@index([coins(sort: Desc)])
+  @@index([email])
+  @@index([role])
+  @@index([isBanned])
 }
+
+// ==================
+// MODÈLE ROOM (EXISTANT)
+// ==================
 
 model Room {
-  id          String   @id @default(uuid())
+  id          Int       @id @default(autoincrement())
   name        String
-  description String   @default("")
-  ownerId     String
-  isPublic    Boolean  @default(true)
-  maxUsers    Int      @default(25)
-  password    String?
+  description String?
+  isPublic    Boolean   @default(true)
+  maxUsers    Int       @default(25)
+  ownerId     Int
+  owner       User      @relation(fields: [ownerId], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
   
-  // Layout et décoration
-  layout      String   @default("basic")
-  furnitures  Json     @default("[]")
-  wallpaper   String   @default("default")
-  floor       String   @default("default")
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
-  // Relations
-  owner       User     @relation("RoomOwner", fields: [ownerId], references: [id])
   messages    Message[]
+  edits       RoomEdit[]
   
-  @@index([isPublic])
   @@index([ownerId])
+  @@index([isPublic])
 }
 
+// ==================
+// MODÈLE MESSAGE (EXISTANT)
+// ==================
+
 model Message {
-  id        String   @id @default(uuid())
+  id        Int      @id @default(autoincrement())
   content   String
-  userId    String
-  roomId    String
-  type      String   @default("chat") // chat, whisper, system
-  
+  userId    Int
+  roomId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  room      Room     @relation(fields: [roomId], references: [id])
   createdAt DateTime @default(now())
   
-  // Relations
-  user      User     @relation(fields: [userId], references: [id])
-  room      Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
-  
-  @@index([roomId])
   @@index([userId])
+  @@index([roomId])
   @@index([createdAt])
 }
 
-model Economy {
-  id          String   @id @default(uuid())
-  totalCoins  BigInt   @default(0)
-  totalGems   BigInt   @default(0)
+// ==================
+// MODÈLE PRIVATEMESSAGE (EXISTANT)
+// ==================
+
+model PrivateMessage {
+  id         Int      @id @default(autoincrement())
+  content    String
+  fromId     Int
+  toId       Int
+  isRead     Boolean  @default(false)
+  createdAt  DateTime @default(now())
   
-  updatedAt   DateTime @updatedAt
+  from       User     @relation("MessageFrom", fields: [fromId], references: [id])
+  to         User     @relation("MessageTo", fields: [toId], references: [id])
+  
+  @@index([fromId])
+  @@index([toId])
+  @@index([isRead])
+  @@index([createdAt])
 }
 
-//✅ ===== SYSTÈME DE QUÊTES =====
+// ==================
+// MODÈLE QUEST (EXISTANT)
+// ==================
 
 model Quest {
-  id          String    @id @default(uuid())
-  name        String
+  id          Int         @id @default(autoincrement())
+  title       String
   description String
-  type        QuestType // TUTORIAL, DAILY, WEEKLY, SPECIAL, HIDDEN
-  category    String    // "social", "decoration", "exploration", "time"
+  type        String      // tutorial, daily, weekly
+  reward      Json        // { coins: 100, experience: 50 }
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
   
-  // Objectifs
-  targetType  String    // "send_messages", "place_furniture", "visit_rooms", etc.
-  targetCount Int       // Combien de fois il faut faire l'action
-  
-  // Récompenses
-  xpReward    Int       @default(0)
-  coinsReward Int       @default(0)
-  itemReward  String?   // ID ou type du meuble récompense (optionnel)
-  badgeReward String?   // Nom du badge à donner (optionnel)
-  
-  // Timing & Reset
-  resetTime   ResetTime // NEVER, DAILY, WEEKLY, MONTHLY
-  
-  // Ordre pour quêtes tutorial (optionnel)
-  order       Int?
-  
-  // Activation
-  isActive    Boolean   @default(true)
-  
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  
-  // Relations
   userQuests  UserQuest[]
-  
-  @@index([type])
-  @@index([isActive])
-  @@unique([name])
 }
 
 model UserQuest {
-  id          String    @id @default(uuid())
-  userId      String
-  questId     String
-  
-  // Progression
-  progress    Int       @default(0)
-  completed   Boolean   @default(false)
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  questId     Int
+  progress    Int      @default(0)
+  isCompleted Boolean  @default(false)
   completedAt DateTime?
+  createdAt   DateTime @default(now())
   
-  // Pour daily/weekly reset
-  lastReset   DateTime?
-  metadata    Json?     @default("{}")
-  
-  // Récompense réclamée
-  rewardClaimed Boolean @default(false)
-  
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  
-  // Relations
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  quest       Quest     @relation(fields: [questId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id])
+  quest       Quest    @relation(fields: [questId], references: [id])
   
   @@unique([userId, questId])
   @@index([userId])
   @@index([questId])
-  @@index([completed])
 }
 
-// ===== ENUMS =====
-
-enum QuestType {
-  TUTORIAL  // Quêtes pour débutants (une seule fois)
-  DAILY     // Quêtes quotidiennes (reset chaque jour)
-  WEEKLY    // Quêtes hebdomadaires (reset chaque semaine)
-  SPECIAL   // Quêtes d'événements (saisonnières)
-  HIDDEN    // Achievements cachés
-}
-
-enum ResetTime {
-  NEVER   // Quête unique (tutorial, hidden)
-  DAILY   // Reset chaque jour à minuit
-  WEEKLY  // Reset chaque lundi
-  MONTHLY // Reset le 1er du mois
-}
-
-// ============================================
-// ✅ SYSTÈME DE BADGES
-// ============================================
+// ==================
+// ✅ NOUVEAU: MODÈLE BADGE
+// ==================
 
 model Badge {
-  id          String   @id @default(uuid())
-  key         String   @unique // Ex: "first_login", "level_10", "chat_master"
-  name        String   // Ex: "Premier Pas"
-  description String   // Ex: "Connectez-vous pour la première fois"
-  icon        String   // Ex: "👋" (emoji temporaire) ou "/assets/badges/first_login.png" (image finale)
-  category    String   // Ex: "welcome", "progression", "social", "special"
-  rarity      String   @default("common") // "common", "rare", "epic", "legendary"
-  createdAt   DateTime @default(now())
+  id            Int       @id @default(autoincrement())
+  code          String    @unique
+  name          String
+  description   String?
+  imageUrl      String?
+  isAdminOnly   Boolean   @default(false)
+  createdAt     DateTime  @default(now())
   
-  // Relations
-  userBadges    UserBadge[]
-  activeForUsers User[]  @relation("ActiveBadge")
+  users         UserBadge[]
+  
+  @@index([code])
+  @@index([isAdminOnly])
 }
+
+// ==================
+// ✅ NOUVEAU: MODÈLE USERBADGE (RELATION)
+// ==================
 
 model UserBadge {
-  id          String   @id @default(uuid())
-  userId      String
-  badgeId     String
-  unlockedAt  DateTime @default(now())
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  badgeId   Int
+  givenBy   Int?     // ID de l'admin qui a donné le badge
+  givenAt   DateTime @default(now())
   
-  // Relations
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  badge       Badge    @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badge     Badge    @relation(fields: [badgeId], references: [id], onDelete: Cascade)
   
-  @@unique([userId, badgeId]) // Un utilisateur ne peut débloquer un badge qu'une fois
+  @@unique([userId, badgeId])
+  @@index([userId])
+  @@index([badgeId])
+  @@index([givenBy])
 }
 
-model PrivateMessage {
-  id         String   @id @default(uuid())
-  content    String
-  senderId   String
-  receiverId String
-  read       Boolean  @default(false)
-  createdAt  DateTime @default(now())
+// ==================
+// ✅ NOUVEAU: MODÈLE ADMINLOG
+// ==================
+
+model AdminLog {
+  id           Int      @id @default(autoincrement())
+  adminId      Int
+  targetUserId Int?
+  action       String   // ban, unban, mute, unmute, kick, give_badge, remove_badge, give_coins, etc.
+  reason       String?
+  details      Json?    // Détails supplémentaires (durée, montant, etc.)
+  createdAt    DateTime @default(now())
   
-  sender   User @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
-  receiver User @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+  admin        User     @relation("AdminActions", fields: [adminId], references: [id])
+  targetUser   User?    @relation("TargetUser", fields: [targetUserId], references: [id])
   
-  @@index([senderId])
-  @@index([receiverId])
+  @@index([adminId])
+  @@index([targetUserId])
+  @@index([action])
   @@index([createdAt])
-  @@map("private_messages")
+}
+
+// ==================
+// ✅ NOUVEAU: MODÈLE ROOMEDIT (HISTORIQUE)
+// ==================
+
+model RoomEdit {
+  id        Int      @id @default(autoincrement())
+  roomId    Int
+  adminId   Int
+  changes   Json     // Détails des modifications (couleur murs, sol, meubles, etc.)
+  createdAt DateTime @default(now())
+  
+  room      Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  
+  @@index([roomId])
+  @@index([adminId])
+  @@index([createdAt])
 }
