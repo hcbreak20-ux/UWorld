@@ -2,203 +2,217 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-async function seedBadges() {
-  console.log('🏅 Création des badges par défaut...\n');
-  
+async function main() {
+  console.log('🏅 Création des badges...');
+
   const badges = [
-    // Badges VIP
+    // VIP Badges
     {
-      code: 'vip_2024',
+      key: 'vip_2024',
       name: 'VIP 2024',
-      description: 'Membre VIP de 2024',
-      imageUrl: '/badges/vip_2024.png',
+      description: 'Membre VIP de l\'année 2024',
+      icon: '💎',
+      category: 'vip',
+      rarity: 'epic',
       isAdminOnly: false
     },
     {
-      code: 'vip_lifetime',
-      name: 'VIP à vie',
-      description: 'VIP permanent',
-      imageUrl: '/badges/vip_lifetime.png',
+      key: 'vip_lifetime',
+      name: 'VIP Lifetime',
+      description: 'Membre VIP à vie',
+      icon: '👑',
+      category: 'vip',
+      rarity: 'legendary',
       isAdminOnly: false
     },
-    
-    // Badges Staff
+
+    // Staff Badges
     {
-      code: 'staff',
-      name: 'Membre du Staff',
-      description: 'Fait partie de l\'équipe',
-      imageUrl: '/badges/staff.png',
+      key: 'staff',
+      name: 'Staff',
+      description: 'Membre de l\'équipe UWorld',
+      icon: '🛡️',
+      category: 'staff',
+      rarity: 'epic',
       isAdminOnly: true
     },
     {
-      code: 'moderator',
+      key: 'moderator',
       name: 'Modérateur',
-      description: 'Modérateur du jeu',
-      imageUrl: '/badges/moderator.png',
+      description: 'Modérateur UWorld',
+      icon: '🔨',
+      category: 'staff',
+      rarity: 'epic',
       isAdminOnly: true
     },
     {
-      code: 'admin',
+      key: 'admin',
       name: 'Administrateur',
-      description: 'Administrateur du jeu',
-      imageUrl: '/badges/admin.png',
+      description: 'Administrateur UWorld',
+      icon: '⚡',
+      category: 'staff',
+      rarity: 'legendary',
       isAdminOnly: true
     },
     {
-      code: 'founder',
+      key: 'founder',
       name: 'Fondateur',
-      description: 'Fondateur du jeu',
-      imageUrl: '/badges/founder.png',
+      description: 'Fondateur d\'UWorld',
+      icon: '⭐',
+      category: 'staff',
+      rarity: 'legendary',
       isAdminOnly: true
     },
-    
-    // Badges Événements
+
+    // Event Badges
     {
-      code: 'event_summer_2024',
-      name: 'Événement Été 2024',
-      description: 'A participé à l\'événement d\'été 2024',
-      imageUrl: '/badges/summer_2024.png',
+      key: 'summer_2024',
+      name: 'Été 2024',
+      description: 'Participant à l\'événement Été 2024',
+      icon: '☀️',
+      category: 'event',
+      rarity: 'rare',
       isAdminOnly: false
     },
     {
-      code: 'event_halloween_2024',
+      key: 'halloween_2024',
       name: 'Halloween 2024',
-      description: 'A participé à Halloween 2024',
-      imageUrl: '/badges/halloween_2024.png',
+      description: 'Participant à Halloween 2024',
+      icon: '🎃',
+      category: 'event',
+      rarity: 'rare',
       isAdminOnly: false
     },
     {
-      code: 'event_christmas_2024',
+      key: 'christmas_2024',
       name: 'Noël 2024',
-      description: 'A participé à Noël 2024',
-      imageUrl: '/badges/christmas_2024.png',
+      description: 'Participant à Noël 2024',
+      icon: '🎄',
+      category: 'event',
+      rarity: 'rare',
       isAdminOnly: false
     },
     {
-      code: 'event_newyear_2025',
+      key: 'newyear_2025',
       name: 'Nouvel An 2025',
-      description: 'A participé au Nouvel An 2025',
-      imageUrl: '/badges/newyear_2025.png',
+      description: 'Célébration du Nouvel An 2025',
+      icon: '🎆',
+      category: 'event',
+      rarity: 'rare',
       isAdminOnly: false
     },
-    
-    // Badges Réalisations
+
+    // Achievement Badges
     {
-      code: 'beta_tester',
-      name: 'Testeur Beta',
-      description: 'A participé à la beta',
-      imageUrl: '/badges/beta.png',
+      key: 'beta_tester',
+      name: 'Beta Tester',
+      description: 'A participé à la beta d\'UWorld',
+      icon: '🧪',
+      category: 'achievement',
+      rarity: 'epic',
       isAdminOnly: false
     },
     {
-      code: 'first_100',
+      key: 'first_100',
       name: 'Top 100',
       description: 'Parmi les 100 premiers joueurs',
-      imageUrl: '/badges/first_100.png',
+      icon: '🥇',
+      category: 'achievement',
+      rarity: 'rare',
       isAdminOnly: false
     },
     {
-      code: 'millionaire',
+      key: 'millionaire',
       name: 'Millionnaire',
-      description: 'A possédé 1 000 000 uCoins',
-      imageUrl: '/badges/millionaire.png',
+      description: 'Posséder 1 000 000 uCoins',
+      icon: '💰',
+      category: 'achievement',
+      rarity: 'epic',
       isAdminOnly: false
     },
     {
-      code: 'level_50',
+      key: 'level_50',
       name: 'Niveau 50',
-      description: 'A atteint le niveau 50',
-      imageUrl: '/badges/level_50.png',
+      description: 'Atteindre le niveau 50',
+      icon: '🔥',
+      category: 'achievement',
+      rarity: 'rare',
       isAdminOnly: false
     },
     {
-      code: 'level_100',
+      key: 'level_100',
       name: 'Niveau 100',
-      description: 'A atteint le niveau 100',
-      imageUrl: '/badges/level_100.png',
+      description: 'Atteindre le niveau 100',
+      icon: '💯',
+      category: 'achievement',
+      rarity: 'legendary',
       isAdminOnly: false
     },
-    
-    // Badges Spéciaux
+
+    // Special Badges
     {
-      code: 'helper',
-      name: 'Helper',
-      description: 'Aide les nouveaux joueurs',
-      imageUrl: '/badges/helper.png',
+      key: 'helper',
+      name: 'Assistant',
+      description: 'Aide activement la communauté',
+      icon: '🤝',
+      category: 'special',
+      rarity: 'rare',
       isAdminOnly: false
     },
     {
-      code: 'builder',
+      key: 'builder',
       name: 'Constructeur',
-      description: 'A créé des salles exceptionnelles',
-      imageUrl: '/badges/builder.png',
+      description: 'Créateur de salles exceptionnelles',
+      icon: '🏗️',
+      category: 'special',
+      rarity: 'rare',
       isAdminOnly: false
     },
     {
-      code: 'social_butterfly',
+      key: 'social_butterfly',
       name: 'Papillon Social',
-      description: 'A plus de 100 amis',
-      imageUrl: '/badges/social.png',
+      description: 'Plus de 100 amis',
+      icon: '🦋',
+      category: 'special',
+      rarity: 'rare',
       isAdminOnly: false
     },
     {
-      code: 'artist',
+      key: 'artist',
       name: 'Artiste',
-      description: 'Contribution artistique au jeu',
-      imageUrl: '/badges/artist.png',
+      description: 'Créateur de contenu reconnu',
+      icon: '🎨',
+      category: 'special',
+      rarity: 'epic',
       isAdminOnly: false
     },
     {
-      code: 'veteran',
+      key: 'veteran',
       name: 'Vétéran',
-      description: 'Joue depuis plus d\'1 an',
-      imageUrl: '/badges/veteran.png',
+      description: 'Plus d\'un an sur UWorld',
+      icon: '🏆',
+      category: 'special',
+      rarity: 'epic',
       isAdminOnly: false
     }
   ];
-  
-  let created = 0;
-  let existing = 0;
-  
+
   for (const badge of badges) {
-    try {
-      await prisma.badge.upsert({
-        where: { code: badge.code },
-        update: {
-          name: badge.name,
-          description: badge.description,
-          imageUrl: badge.imageUrl,
-          isAdminOnly: badge.isAdminOnly
-        },
-        create: badge
-      });
-      
-      const existingBadge = await prisma.badge.findUnique({
-        where: { code: badge.code }
-      });
-      
-      if (existingBadge) {
-        existing++;
-        console.log(`✅ Badge mis à jour: ${badge.name}`);
-      } else {
-        created++;
-        console.log(`✨ Badge créé: ${badge.name}`);
-      }
-    } catch (error) {
-      console.error(`❌ Erreur avec le badge ${badge.code}:`, error);
-    }
+    await prisma.badge.upsert({
+      where: { key: badge.key },
+      update: badge,
+      create: badge
+    });
+    console.log(`✅ Badge créé: ${badge.name}`);
   }
-  
-  console.log('\n📊 Résumé:');
-  console.log(`   - ${created} badges créés`);
-  console.log(`   - ${existing} badges mis à jour`);
-  console.log(`   - ${badges.length} badges au total\n`);
-  console.log('✅ Badges par défaut créés avec succès!');
+
+  console.log('\n🎉 Tous les badges ont été créés!');
+  console.log(`📊 Total: ${badges.length} badges`);
 }
 
-seedBadges()
-  .catch((error) => {
-    console.error('❌ Erreur lors de la création des badges:', error);
+main()
+  .catch((e) => {
+    console.error('❌ Erreur:', e);
     process.exit(1);
   })
   .finally(async () => {

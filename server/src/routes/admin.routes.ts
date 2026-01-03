@@ -1,13 +1,13 @@
 import { Router } from 'express';
 import { prisma } from '../db';
 import { 
-  requireRole, 
-  requirePermission,
-  UserRole,
-  canActOnTarget,
-  validateDuration,
-  parseDuration,
-  formatDuration
+ requireRole, 
+ requirePermission,
+ UserRole,
+ canActOnTarget,
+ validateDuration,
+ parseDuration,
+ formatDuration
 } from '../middleware/admin.middleware';
 
 const router = Router();
@@ -21,84 +21,84 @@ const router = Router();
  * POST /api/admin/ban
  */
 router.post('/ban', requirePermission('ban_temporary'), async (req, res) => {
-  const { targetUsername, duration, reason } = req.body;
-  const admin = (req as any).user;
-  
-  try {
-    // Validation
-    if (!targetUsername || !duration || !reason) {
-      return res.status(400).json({ 
-        error: 'Paramètres manquants',
-        required: ['targetUsername', 'duration', 'reason']
-      });
-    }
-    
-    // Trouver l'utilisateur cible
-    const target = await prisma.user.findUnique({
-      where: { username: targetUsername }
-    });
-    
-    if (!target) {
-      return res.status(404).json({ error: 'Utilisateur introuvable' });
-    }
-    
-    // Vérifier la hiérarchie
-    if (!canActOnTarget(admin.role as UserRole, target.role as UserRole)) {
-      return res.status(403).json({ 
-        error: 'Impossible de bannir un utilisateur de rang égal ou supérieur' 
-      });
-    }
-    
-    // Vérifier la durée selon le rôle
-    const durationCheck = validateDuration(admin.role as UserRole, duration);
-    if (!durationCheck.valid) {
-      return res.status(403).json({ error: durationCheck.error });
-    }
-    
-    // Calculer la date d'expiration
-    let banExpiresAt = null;
-    if (duration !== 'permanent') {
-      const durationMs = parseDuration(duration);
-      banExpiresAt = new Date(Date.now() + durationMs);
-    }
-    
-    // Bannir l'utilisateur
-    await prisma.user.update({
-      where: { id: target.id },
-      data: {
-        isBanned: true,
-        banExpiresAt,
-        banReason: reason
-      }
-    });
-    
-    // Logger l'action
-    await prisma.adminLog.create({
-      data: {
-        adminId: admin.id,
-        targetUserId: target.id,
-        action: 'ban',
-        reason,
-        details: {
-          duration,
-          expiresAt: banExpiresAt,
-          permanent: duration === 'permanent'
-        }
-      }
-    });
-    
-    res.json({ 
-      success: true,
-      message: `${targetUsername} a été banni`,
-      duration: duration,
-      expiresAt: banExpiresAt,
-      reason
-    });
-    
-  } catch (error) {
-    console.error('Erreur ban:', error);
-    res.status(500).json({ error: 'Erreur serveur' });
-  }
+ const { targetUsername, duration, reason } = req.body;
+ const admin = (req as any).user;
+ 
+ try {
+ // Validation
+ if (!targetUsername || !duration || !reason) {
+ return res.status(400).json({ 
+ error: 'Paramètres manquants',
+ required: ['targetUsername', 'duration', 'reason']
+ });
+ }
+ 
+ // Trouver l'utilisateur cible
+ const target = await prisma.user.findUnique({
+ where: { user
+ });
+ 
+ if (!target) {
+ return res.status(404).json({ error: 'Utilisateur introuvable' });
+ }
+ 
+ // Vérifier la hiérarchie
+ if (!canActOnTarget(admin.role as UserRole, target.role as UserRole)) {
+ return res.status(403).json({ 
+ error: 'Impossible de bannir un utilisateur de rang égal ou supérieur' 
+ });
+ }
+ 
+ // Vérifier la durée selon le rôle
+ const durationCheck = validateDuration(admin.role as UserRole, duration);
+ if (!durationCheck.valid) {
+ return res.status(403).json({ error: durationCheck.error });
+ }
+ 
+ // Calculer la date d'expiration
+ let banExpiresAt = null;
+ if (duration !== 'permanent') {
+ const durationMs = parseDuration(duration);
+ banExpiresAt = new Date(Date.now() + durationMs);
+ }
+ 
+ // Bannir l'utilisateur
+ await prisma.user.update({
+ where: { id: target.id },
+ data: {
+ isBanned: true,
+ banExpiresAt,
+ banReason: reason
+ }
+ });
+ 
+ // Logger l'action
+ await prisma.adminLog.create({
+ data: {
+ adminId: admin.id,
+ targetUserId: target.id,
+ action: 'ban',
+ reason,
+ details: {
+ duration,
+ expiresAt: banExpiresAt,
+ permanent: duration === 'permanent'
+ }
+ }
+ });
+ 
+ res.json({ 
+ success: true,
+ message: `${targetUsername} a été banni`,
+ duration: duration,
+ expiresAt: banExpiresAt,
+ reason
+ });
+ 
+ } catch (error) {
+ console.error('Erreur ban:', error);
+ res.status(500).json({ error: 'Erreur serveur' });
+ }
 });
 
 /**
@@ -106,49 +106,49 @@ router.post('/ban', requirePermission('ban_temporary'), async (req, res) => {
  * POST /api/admin/unban
  */
 router.post('/unban', requirePermission('unban'), async (req, res) => {
-  const { targetUsername } = req.body;
-  const admin = (req as any).user;
-  
-  try {
-    const target = await prisma.user.findUnique({
-      where: { username: targetUsername }
-    });
-    
-    if (!target) {
-      return res.status(404).json({ error: 'Utilisateur introuvable' });
-    }
-    
-    if (!target.isBanned) {
-      return res.status(400).json({ error: 'Cet utilisateur n\'est pas banni' });
-    }
-    
-    await prisma.user.update({
-      where: { id: target.id },
-      data: {
-        isBanned: false,
-        banExpiresAt: null,
-        banReason: null
-      }
-    });
-    
-    await prisma.adminLog.create({
-      data: {
-        adminId: admin.id,
-        targetUserId: target.id,
-        action: 'unban',
-        reason: `Débanni par ${admin.username}`
-      }
-    });
-    
-    res.json({ 
-      success: true, 
-      message: `${targetUsername} a été débanni` 
-    });
-    
-  } catch (error) {
-    console.error('Erreur unban:', error);
-    res.status(500).json({ error: 'Erreur serveur' });
-  }
+ const { targetUsername } = req.body;
+ const admin = (req as any).user;
+ 
+ try {
+ const target = await prisma.user.findUnique({
+ where: { user
+ });
+ 
+ if (!target) {
+ return res.status(404).json({ error: 'Utilisateur introuvable' });
+ }
+ 
+ if (!target.isBanned) {
+ return res.status(400).json({ error: 'Cet utilisateur n\'est pas banni' });
+ }
+ 
+ await prisma.user.update({
+ where: { id: target.id },
+ data: {
+ isBanned: false,
+ banExpiresAt: null,
+ banReason: null
+ }
+ });
+ 
+ await prisma.adminLog.create({
+ data: {
+ adminId: admin.id,
+ targetUserId: target.id,
+ action: 'unban',
+ reason: `Débanni par ${admin.username}`
+ }
+ });
+ 
+ res.json({ 
+ success: true, 
+ message: `${targetUsername} a été débanni` 
+ });
+ 
+ } catch (error) {
+ console.error('Erreur unban:', error);
+ res.status(500).json({ error: 'Erreur serveur' });
+ }
 });
 
 /**
@@ -156,72 +156,72 @@ router.post('/unban', requirePermission('unban'), async (req, res) => {
  * POST /api/admin/mute
  */
 router.post('/mute', requirePermission('mute_temporary'), async (req, res) => {
-  const { targetUsername, duration, reason } = req.body;
-  const admin = (req as any).user;
-  
-  try {
-    if (!targetUsername || !duration || !reason) {
-      return res.status(400).json({ error: 'Paramètres manquants' });
-    }
-    
-    const target = await prisma.user.findUnique({
-      where: { username: targetUsername }
-    });
-    
-    if (!target) {
-      return res.status(404).json({ error: 'Utilisateur introuvable' });
-    }
-    
-    if (!canActOnTarget(admin.role as UserRole, target.role as UserRole)) {
-      return res.status(403).json({ 
-        error: 'Impossible de mute un utilisateur de rang égal ou supérieur' 
-      });
-    }
-    
-    const durationCheck = validateDuration(admin.role as UserRole, duration);
-    if (!durationCheck.valid) {
-      return res.status(403).json({ error: durationCheck.error });
-    }
-    
-    let muteExpiresAt = null;
-    if (duration !== 'permanent') {
-      const durationMs = parseDuration(duration);
-      muteExpiresAt = new Date(Date.now() + durationMs);
-    }
-    
-    await prisma.user.update({
-      where: { id: target.id },
-      data: {
-        isMuted: true,
-        muteExpiresAt,
-        muteReason: reason
-      }
-    });
-    
-    await prisma.adminLog.create({
-      data: {
-        adminId: admin.id,
-        targetUserId: target.id,
-        action: 'mute',
-        reason,
-        details: {
-          duration,
-          expiresAt: muteExpiresAt
-        }
-      }
-    });
-    
-    res.json({ 
-      success: true,
-      message: `${targetUsername} a été mute`,
-      duration,
-      expiresAt: muteExpiresAt
-    });
-    
-  } catch (error) {
-    console.error('Erreur mute:', error);
-    res.status(500).json({ error: 'Erreur serveur' });
-  }
+ const { targetUsername, duration, reason } = req.body;
+ const admin = (req as any).user;
+ 
+ try {
+ if (!targetUsername || !duration || !reason) {
+ return res.status(400).json({ error: 'Paramètres manquants' });
+ }
+ 
+ const target = await prisma.user.findUnique({
+ where: { user
+ });
+ 
+ if (!target) {
+ return res.status(404).json({ error: 'Utilisateur introuvable' });
+ }
+ 
+ if (!canActOnTarget(admin.role as UserRole, target.role as UserRole)) {
+ return res.status(403).json({ 
+ error: 'Impossible de mute un utilisateur de rang égal ou supérieur' 
+ });
+ }
+ 
+ const durationCheck = validateDuration(admin.role as UserRole, duration);
+ if (!durationCheck.valid) {
+ return res.status(403).json({ error: durationCheck.error });
+ }
+ 
+ let muteExpiresAt = null;
+ if (duration !== 'permanent') {
+ const durationMs = parseDuration(duration);
+ muteExpiresAt = new Date(Date.now() + durationMs);
+ }
+ 
+ await prisma.user.update({
+ where: { id: target.id },
+ data: {
+ isMuted: true,
+ muteExpiresAt,
+ muteReason: reason
+ }
+ });
+ 
+ await prisma.adminLog.create({
+ data: {
+ adminId: admin.id,
+ targetUserId: target.id,
+ action: 'mute',
+ reason,
+ details: {
+ duration,
+ expiresAt: muteExpiresAt
+ }
+ }
+ });
+ 
+ res.json({ 
+ success: true,
+ message: `${targetUsername} a été mute`,
+ duration,
+ expiresAt: muteExpiresAt
+ });
+ 
+ } catch (error) {
+ console.error('Erreur mute:', error);
+ res.status(500).json({ error: 'Erreur serveur' });
+ }
 });
 
 /**
@@ -229,42 +229,42 @@ router.post('/mute', requirePermission('mute_temporary'), async (req, res) => {
  * POST /api/admin/unmute
  */
 router.post('/unmute', requirePermission('unmute'), async (req, res) => {
-  const { targetUsername } = req.body;
-  const admin = (req as any).user;
-  
-  try {
-    const target = await prisma.user.findUnique({
-      where: { username: targetUsername }
-    });
-    
-    if (!target) {
-      return res.status(404).json({ error: 'Utilisateur introuvable' });
-    }
-    
-    await prisma.user.update({
-      where: { id: target.id },
-      data: {
-        isMuted: false,
-        muteExpiresAt: null,
-        muteReason: null
-      }
-    });
-    
-    await prisma.adminLog.create({
-      data: {
-        adminId: admin.id,
-        targetUserId: target.id,
-        action: 'unmute',
-        reason: `Unmute par ${admin.username}`
-      }
-    });
-    
-    res.json({ success: true, message: `${targetUsername} peut à nouveau parler` });
-    
-  } catch (error) {
-    console.error('Erreur unmute:', error);
-    res.status(500).json({ error: 'Erreur serveur' });
-  }
+ const { targetUsername } = req.body;
+ const admin = (req as any).user;
+ 
+ try {
+ const target = await prisma.user.findUnique({
+ where: { user
+ });
+ 
+ if (!target) {
+ return res.status(404).json({ error: 'Utilisateur introuvable' });
+ }
+ 
+ await prisma.user.update({
+ where: { id: target.id },
+ data: {
+ isMuted: false,
+ muteExpiresAt: null,
+ muteReason: null
+ }
+ });
+ 
+ await prisma.adminLog.create({
+ data: {
+ adminId: admin.id,
+ targetUserId: target.id,
+ action: 'unmute',
+ reason: `Unmute par ${admin.username}`
+ }
+ });
+ 
+ res.json({ success: true, message: `${targetUsername} peut à nouveau parler` });
+ 
+ } catch (error) {
+ console.error('Erreur unmute:', error);
+ res.status(500).json({ error: 'Erreur serveur' });
+ }
 });
 
 /**
@@ -272,48 +272,48 @@ router.post('/unmute', requirePermission('unmute'), async (req, res) => {
  * POST /api/admin/warn
  */
 router.post('/warn', requirePermission('warn'), async (req, res) => {
-  const { targetUsername, reason } = req.body;
-  const admin = (req as any).user;
-  
-  try {
-    const target = await prisma.user.findUnique({
-      where: { username: targetUsername }
-    });
-    
-    if (!target) {
-      return res.status(404).json({ error: 'Utilisateur introuvable' });
-    }
-    
-    // Incrémenter les warnings
-    const updated = await prisma.user.update({
-      where: { id: target.id },
-      data: {
-        warnings: { increment: 1 }
-      }
-    });
-    
-    await prisma.adminLog.create({
-      data: {
-        adminId: admin.id,
-        targetUserId: target.id,
-        action: 'warn',
-        reason,
-        details: {
-          warningCount: updated.warnings
-        }
-      }
-    });
-    
-    res.json({ 
-      success: true,
-      message: `${targetUsername} a été averti`,
-      warnings: updated.warnings
-    });
-    
-  } catch (error) {
-    console.error('Erreur warn:', error);
-    res.status(500).json({ error: 'Erreur serveur' });
-  }
+ const { targetUsername, reason } = req.body;
+ const admin = (req as any).user;
+ 
+ try {
+ const target = await prisma.user.findUnique({
+ where: { user
+ });
+ 
+ if (!target) {
+ return res.status(404).json({ error: 'Utilisateur introuvable' });
+ }
+ 
+ // Incrémenter les warnings
+ const updated = await prisma.user.update({
+ where: { id: target.id },
+ data: {
+ warnings: { increment: 1 }
+ }
+ });
+ 
+ await prisma.adminLog.create({
+ data: {
+ adminId: admin.id,
+ targetUserId: target.id,
+ action: 'warn',
+ reason,
+ details: {
+ warningCount: updated.warnings
+ }
+ }
+ });
+ 
+ res.json({ 
+ success: true,
+ message: `${targetUsername} a été averti`,
+ warnings: updated.warnings
+ });
+ 
+ } catch (error) {
+ console.error('Erreur warn:', error);
+ res.status(500).json({ error: 'Erreur serveur' });
+ }
 });
 
 // ==================
@@ -325,79 +325,79 @@ router.post('/warn', requirePermission('warn'), async (req, res) => {
  * POST /api/admin/badge/give
  */
 router.post('/badge/give', requirePermission('give_event_badges'), async (req, res) => {
-  const { targetUsername, badgeCode } = req.body;
-  const admin = (req as any).user;
-  
-  try {
-    if (!targetUsername || !badgeCode) {
-      return res.status(400).json({ error: 'Paramètres manquants' });
-    }
-    
-    const target = await prisma.user.findUnique({
-      where: { username: targetUsername }
-    });
-    
-    const badge = await prisma.badge.findUnique({
-      where: { code: badgeCode }
-    });
-    
-    if (!target || !badge) {
-      return res.status(404).json({ error: 'Utilisateur ou badge introuvable' });
-    }
-    
-    // Vérifier si le badge est admin-only
-    if (badge.isAdminOnly && admin.role !== 'admin' && admin.role !== 'owner') {
-      return res.status(403).json({ 
-        error: 'Seuls les admins peuvent donner ce badge' 
-      });
-    }
-    
-    // Vérifier si l'utilisateur a déjà le badge
-    const existing = await prisma.userBadge.findUnique({
-      where: {
-        userId_badgeId: {
-          userId: target.id,
-          badgeId: badge.id
-        }
-      }
-    });
-    
-    if (existing) {
-      return res.status(400).json({ 
-        error: `${targetUsername} possède déjà ce badge` 
-      });
-    }
-    
-    // Donner le badge
-    await prisma.userBadge.create({
-      data: {
-        userId: target.id,
-        badgeId: badge.id,
-        givenBy: admin.id
-      }
-    });
-    
-    await prisma.adminLog.create({
-      data: {
-        adminId: admin.id,
-        targetUserId: target.id,
-        action: 'give_badge',
-        details: { 
-          badgeCode,
-          badgeName: badge.name
-        }
-      }
-    });
-    
-    res.json({ 
-      success: true, 
-      message: `Badge "${badge.name}" donné à ${targetUsername}` 
-    });
-    
-  } catch (error) {
-    console.error('Erreur give badge:', error);
-    res.status(500).json({ error: 'Erreur serveur' });
-  }
+ const { targetUsername, badgeCode } = req.body;
+ const admin = (req as any).user;
+ 
+ try {
+ if (!targetUsername || !badgeCode) {
+ return res.status(400).json({ error: 'Paramètres manquants' });
+ }
+ 
+ const target = await prisma.user.findUnique({
+ where: { user
+ });
+ 
+ const badge = await prisma.badge.findUnique({
+ where: { key: badgeCode }
+ });
+ 
+ if (!target || !badge) {
+ return res.status(404).json({ error: 'Utilisateur ou badge introuvable' });
+ }
+ 
+ // Vérifier si le badge est admin-only
+ if (badge.isAdminOnly && admin.role !== 'admin' && admin.role !== 'owner') {
+ return res.status(403).json({ 
+ error: 'Seuls les admins peuvent donner ce badge' 
+ });
+ }
+ 
+ // Vérifier si l'utilisateur a déjà le badge
+ const existing = await prisma.userBadge.findUnique({
+ where: {
+ userId_badgeId: {
+ userId: target.id,
+ badgeId: badge.id
+ }
+ }
+ });
+ 
+ if (existing) {
+ return res.status(400).json({ 
+ error: `${targetUsername} possède déjà ce badge` 
+ });
+ }
+ 
+ // Donner le badge
+ await prisma.userBadge.create({
+ data: {
+ userId: target.id,
+ badgeId: badge.id,
+ givenBy: admin.id
+ }
+ });
+ 
+ await prisma.adminLog.create({
+ data: {
+ adminId: admin.id,
+ targetUserId: target.id,
+ action: 'give_badge',
+ details: { 
+ badgeCode,
+ badgeName: badge.name
+ }
+ }
+ });
+ 
+ res.json({ 
+ success: true, 
+ message: `Badge "${badge.name}" donné à ${targetUsername}` 
+ });
+ 
+ } catch (error) {
+ console.error('Erreur give badge:', error);
+ res.status(500).json({ error: 'Erreur serveur' });
+ }
 });
 
 /**
@@ -405,67 +405,67 @@ router.post('/badge/give', requirePermission('give_event_badges'), async (req, r
  * POST /api/admin/badge/remove
  */
 router.post('/badge/remove', requirePermission('remove_badge'), async (req, res) => {
-  const { targetUsername, badgeCode } = req.body;
-  const admin = (req as any).user;
-  
-  try {
-    const target = await prisma.user.findUnique({
-      where: { username: targetUsername }
-    });
-    
-    const badge = await prisma.badge.findUnique({
-      where: { code: badgeCode }
-    });
-    
-    if (!target || !badge) {
-      return res.status(404).json({ error: 'Utilisateur ou badge introuvable' });
-    }
-    
-    const userBadge = await prisma.userBadge.findUnique({
-      where: {
-        userId_badgeId: {
-          userId: target.id,
-          badgeId: badge.id
-        }
-      }
-    });
-    
-    if (!userBadge) {
-      return res.status(404).json({ 
-        error: `${targetUsername} ne possède pas ce badge` 
-      });
-    }
-    
-    await prisma.userBadge.delete({
-      where: {
-        userId_badgeId: {
-          userId: target.id,
-          badgeId: badge.id
-        }
-      }
-    });
-    
-    await prisma.adminLog.create({
-      data: {
-        adminId: admin.id,
-        targetUserId: target.id,
-        action: 'remove_badge',
-        details: { 
-          badgeCode,
-          badgeName: badge.name
-        }
-      }
-    });
-    
-    res.json({ 
-      success: true, 
-      message: `Badge "${badge.name}" retiré à ${targetUsername}` 
-    });
-    
-  } catch (error) {
-    console.error('Erreur remove badge:', error);
-    res.status(500).json({ error: 'Erreur serveur' });
-  }
+ const { targetUsername, badgeCode } = req.body;
+ const admin = (req as any).user;
+ 
+ try {
+ const target = await prisma.user.findUnique({
+ where: { user
+ });
+ 
+ const badge = await prisma.badge.findUnique({
+ where: { key: badgeCode }
+ });
+ 
+ if (!target || !badge) {
+ return res.status(404).json({ error: 'Utilisateur ou badge introuvable' });
+ }
+ 
+ const userBadge = await prisma.userBadge.findUnique({
+ where: {
+ userId_badgeId: {
+ userId: target.id,
+ badgeId: badge.id
+ }
+ }
+ });
+ 
+ if (!userBadge) {
+ return res.status(404).json({ 
+ error: `${targetUsername} ne possède pas ce badge` 
+ });
+ }
+ 
+ await prisma.userBadge.delete({
+ where: {
+ userId_badgeId: {
+ userId: target.id,
+ badgeId: badge.id
+ }
+ }
+ });
+ 
+ await prisma.adminLog.create({
+ data: {
+ adminId: admin.id,
+ targetUserId: target.id,
+ action: 'remove_badge',
+ details: { 
+ badgeCode,
+ badgeName: badge.name
+ }
+ }
+ });
+ 
+ res.json({ 
+ success: true, 
+ message: `Badge "${badge.name}" retiré à ${targetUsername}` 
+ });
+ 
+ } catch (error) {
+ console.error('Erreur remove badge:', error);
+ res.status(500).json({ error: 'Erreur serveur' });
+ }
 });
 
 // ==================
@@ -477,51 +477,51 @@ router.post('/badge/remove', requirePermission('remove_badge'), async (req, res)
  * POST /api/admin/coins/give
  */
 router.post('/coins/give', requirePermission('give_coins'), async (req, res) => {
-  const { targetUsername, amount } = req.body;
-  const admin = (req as any).user;
-  
-  try {
-    if (!targetUsername || !amount || amount <= 0) {
-      return res.status(400).json({ error: 'Paramètres invalides' });
-    }
-    
-    const target = await prisma.user.findUnique({
-      where: { username: targetUsername }
-    });
-    
-    if (!target) {
-      return res.status(404).json({ error: 'Utilisateur introuvable' });
-    }
-    
-    const updated = await prisma.user.update({
-      where: { id: target.id },
-      data: {
-        coins: { increment: amount }
-      }
-    });
-    
-    await prisma.adminLog.create({
-      data: {
-        adminId: admin.id,
-        targetUserId: target.id,
-        action: 'give_coins',
-        details: { 
-          amount,
-          newBalance: updated.coins
-        }
-      }
-    });
-    
-    res.json({ 
-      success: true, 
-      message: `${amount} uCoins donnés à ${targetUsername}`,
-      newBalance: updated.coins
-    });
-    
-  } catch (error) {
-    console.error('Erreur give coins:', error);
-    res.status(500).json({ error: 'Erreur serveur' });
-  }
+ const { targetUsername, amount } = req.body;
+ const admin = (req as any).user;
+ 
+ try {
+ if (!targetUsername || !amount || amount <= 0) {
+ return res.status(400).json({ error: 'Paramètres invalides' });
+ }
+ 
+ const target = await prisma.user.findUnique({
+ where: { user
+ });
+ 
+ if (!target) {
+ return res.status(404).json({ error: 'Utilisateur introuvable' });
+ }
+ 
+ const updated = await prisma.user.update({
+ where: { id: target.id },
+ data: {
+ coins: { increment: amount }
+ }
+ });
+ 
+ await prisma.adminLog.create({
+ data: {
+ adminId: admin.id,
+ targetUserId: target.id,
+ action: 'give_coins',
+ details: { 
+ amount,
+ newBalance: updated.coins
+ }
+ }
+ });
+ 
+ res.json({ 
+ success: true, 
+ message: `${amount} uCoins donnés à ${targetUsername}`,
+ newBalance: updated.coins
+ });
+ 
+ } catch (error) {
+ console.error('Erreur give coins:', error);
+ res.status(500).json({ error: 'Erreur serveur' });
+ }
 });
 
 /**
@@ -529,51 +529,51 @@ router.post('/coins/give', requirePermission('give_coins'), async (req, res) => 
  * POST /api/admin/nuggets/give
  */
 router.post('/nuggets/give', requirePermission('give_nuggets'), async (req, res) => {
-  const { targetUsername, amount } = req.body;
-  const admin = (req as any).user;
-  
-  try {
-    if (!targetUsername || !amount || amount <= 0) {
-      return res.status(400).json({ error: 'Paramètres invalides' });
-    }
-    
-    const target = await prisma.user.findUnique({
-      where: { username: targetUsername }
-    });
-    
-    if (!target) {
-      return res.status(404).json({ error: 'Utilisateur introuvable' });
-    }
-    
-    const updated = await prisma.user.update({
-      where: { id: target.id },
-      data: {
-        gems: { increment: amount }
-      }
-    });
-    
-    await prisma.adminLog.create({
-      data: {
-        adminId: admin.id,
-        targetUserId: target.id,
-        action: 'give_nuggets',
-        details: { 
-          amount,
-          newBalance: updated.gems
-        }
-      }
-    });
-    
-    res.json({ 
-      success: true, 
-      message: `${amount} uNuggets donnés à ${targetUsername}`,
-      newBalance: updated.gems
-    });
-    
-  } catch (error) {
-    console.error('Erreur give nuggets:', error);
-    res.status(500).json({ error: 'Erreur serveur' });
-  }
+ const { targetUsername, amount } = req.body;
+ const admin = (req as any).user;
+ 
+ try {
+ if (!targetUsername || !amount || amount <= 0) {
+ return res.status(400).json({ error: 'Paramètres invalides' });
+ }
+ 
+ const target = await prisma.user.findUnique({
+ where: { user
+ });
+ 
+ if (!target) {
+ return res.status(404).json({ error: 'Utilisateur introuvable' });
+ }
+ 
+ const updated = await prisma.user.update({
+ where: { id: target.id },
+ data: {
+ gems: { increment: amount }
+ }
+ });
+ 
+ await prisma.adminLog.create({
+ data: {
+ adminId: admin.id,
+ targetUserId: target.id,
+ action: 'give_nuggets',
+ details: { 
+ amount,
+ newBalance: updated.gems
+ }
+ }
+ });
+ 
+ res.json({ 
+ success: true, 
+ message: `${amount} uNuggets donnés à ${targetUsername}`,
+ newBalance: updated.gems
+ });
+ 
+ } catch (error) {
+ console.error('Erreur give nuggets:', error);
+ res.status(500).json({ error: 'Erreur serveur' });
+ }
 });
 
 // ==================
@@ -585,51 +585,51 @@ router.post('/nuggets/give', requirePermission('give_nuggets'), async (req, res)
  * GET /api/admin/user/:username
  */
 router.get('/user/:username', requirePermission('view_user_info'), async (req, res) => {
-  const { username } = req.params;
-  
-  try {
-    const user = await prisma.user.findUnique({
-      where: { username },
-      include: {
-        badges: {
-          include: {
-            badge: true
-          }
-        },
-        adminLogs: {
-          take: 10,
-          orderBy: { createdAt: 'desc' },
-          include: {
-            admin: {
-              select: { username: true }
-            }
-          }
-        },
-        targetLogs: {
-          take: 10,
-          orderBy: { createdAt: 'desc' },
-          include: {
-            admin: {
-              select: { username: true }
-            }
-          }
-        }
-      }
-    });
-    
-    if (!user) {
-      return res.status(404).json({ error: 'Utilisateur introuvable' });
-    }
-    
-    // Ne pas retourner le mot de passe
-    const { password, ...userInfo } = user;
-    
-    res.json(userInfo);
-    
-  } catch (error) {
-    console.error('Erreur get user:', error);
-    res.status(500).json({ error: 'Erreur serveur' });
-  }
+ const { username } = req.params;
+ 
+ try {
+ const user = await prisma.user.findUnique({
+ where: { username },
+ include: {
+ badges: {
+ include: {
+ badge: true
+ }
+ },
+ adminLogs: {
+ take: 10,
+ orderBy: { createdAt: 'desc' },
+ include: {
+ admin: {
+ select: { user
+ }
+ }
+ },
+ targetLogs: {
+ take: 10,
+ orderBy: { createdAt: 'desc' },
+ include: {
+ admin: {
+ select: { user
+ }
+ }
+ }
+ }
+ });
+ 
+ if (!user) {
+ return res.status(404).json({ error: 'Utilisateur introuvable' });
+ }
+ 
+ // Ne pas retourner le mot de passe
+ const { password, ...userInfo } = user;
+ 
+ res.json(userInfo);
+ 
+ } catch (error) {
+ console.error('Erreur get user:', error);
+ res.status(500).json({ error: 'Erreur serveur' });
+ }
 });
 
 /**
@@ -637,30 +637,30 @@ router.get('/user/:username', requirePermission('view_user_info'), async (req, r
  * GET /api/admin/stats
  */
 router.get('/stats', requirePermission('view_stats'), async (req, res) => {
-  try {
-    const [totalUsers, bannedUsers, totalBadges, totalLogs] = await Promise.all([
-      prisma.user.count(),
-      prisma.user.count({ where: { isBanned: true } }),
-      prisma.badge.count(),
-      prisma.adminLog.count()
-    ]);
-    
-    const stats = {
-      totalUsers,
-      bannedUsers,
-      mutedUsers: await prisma.user.count({ where: { isMuted: true } }),
-      totalBadges,
-      totalLogs,
-      totalRooms: await prisma.room.count(),
-      publicRooms: await prisma.room.count({ where: { isPublic: true } })
-    };
-    
-    res.json(stats);
-    
-  } catch (error) {
-    console.error('Erreur stats:', error);
-    res.status(500).json({ error: 'Erreur serveur' });
-  }
+ try {
+ const [totalUsers, bannedUsers, totalBadges, totalLogs] = await Promise.all([
+ prisma.user.count(),
+ prisma.user.count({ where: { isBanned: true } }),
+ prisma.badge.count(),
+ prisma.adminLog.count()
+ ]);
+ 
+ const stats = {
+ totalUsers,
+ bannedUsers,
+ mutedUsers: await prisma.user.count({ where: { isMuted: true } }),
+ totalBadges,
+ totalLogs,
+ totalRooms: await prisma.room.count(),
+ publicRooms: await prisma.room.count({ where: { isPublic: true } })
+ };
+ 
+ res.json(stats);
+ 
+ } catch (error) {
+ console.error('Erreur stats:', error);
+ res.status(500).json({ error: 'Erreur serveur' });
+ }
 });
 
 /**
@@ -668,35 +668,35 @@ router.get('/stats', requirePermission('view_stats'), async (req, res) => {
  * GET /api/admin/logs
  */
 router.get('/logs', requirePermission('view_all_logs'), async (req, res) => {
-  const { action, limit = 100, offset = 0 } = req.query;
-  
-  try {
-    const where: any = {};
-    if (action) {
-      where.action = action;
-    }
-    
-    const logs = await prisma.adminLog.findMany({
-      where,
-      take: Number(limit),
-      skip: Number(offset),
-      orderBy: { createdAt: 'desc' },
-      include: {
-        admin: {
-          select: { username: true, role: true }
-        },
-        targetUser: {
-          select: { username: true }
-        }
-      }
-    });
-    
-    res.json(logs);
-    
-  } catch (error) {
-    console.error('Erreur logs:', error);
-    res.status(500).json({ error: 'Erreur serveur' });
-  }
+ const { action, limit = 100, offset = 0 } = req.query;
+ 
+ try {
+ const where: any = {};
+ if (action) {
+ where.action = action;
+ }
+ 
+ const logs = await prisma.adminLog.findMany({
+ where,
+ take: Number(limit),
+ skip: Number(offset),
+ orderBy: { createdAt: 'desc' },
+ include: {
+ admin: {
+ select: { user
+ },
+ targetUser: {
+ select: { user
+ }
+ }
+ });
+ 
+ res.json(logs);
+ 
+ } catch (error) {
+ console.error('Erreur logs:', error);
+ res.status(500).json({ error: 'Erreur serveur' });
+ }
 });
 
 export default router;
