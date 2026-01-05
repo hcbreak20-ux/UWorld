@@ -14,6 +14,7 @@ import { ChatInput } from '@/components/ChatInput';
 import { MessagesPanel } from '@/components/MessagesPanel';
 import { Toast } from '@/components/Toast';
 import { AdminPanel } from '../components/AdminPanel';
+import WarningPopup from '../components/WarningPopup';
 
 export const LobbyPage: React.FC = () => {
   const navigate = useNavigate();
@@ -183,6 +184,56 @@ export const LobbyPage: React.FC = () => {
     };
   }, [loading, currentRoom]);
 
+  useEffect(() => {
+  if (!socket) return;
+  
+  // ... autres listeners existants
+  
+  // ✅ NOUVEAU: Écouter warnings
+  socket.on('warning', (data: { 
+    reason: string; 
+    warningCount: number; 
+    adminUsername: string;
+  }) => {
+    console.log('⚠️ Warning reçu:', data);
+    setWarningData(data);
+    
+    // Son de notification (optionnel)
+    const audio = new Audio('/sounds/warning.mp3');
+    audio.play().catch(() => {});
+  });
+  
+  // ✅ NOUVEAU: Écouter kick
+  socket.on('kicked', (data: { reason: string; adminUsername: string }) => {
+    alert(`Vous avez été expulsé par ${data.adminUsername}!\nRaison: ${data.reason}`);
+    window.location.href = '/login';
+  });
+  
+  // ✅ NOUVEAU: Écouter ban
+  socket.on('banned', (data: { reason: string; duration?: string }) => {
+    alert(`Vous avez été banni!\nRaison: ${data.reason}\nDurée: ${data.duration || 'permanent'}`);
+    window.location.href = '/login';
+  });
+  
+  // ✅ NOUVEAU: Écouter mute
+  socket.on('muted', (data: { reason: string; duration?: string }) => {
+    alert(`Vous avez été mute!\nRaison: ${data.reason}\nDurée: ${data.duration || 'permanent'}`);
+  });
+  
+  // ✅ NOUVEAU: Écouter unmute
+  socket.on('unmuted', () => {
+    alert('Vous pouvez à nouveau parler!');
+  });
+  
+  return () => {
+    socket.off('warning');
+    socket.off('kicked');
+    socket.off('banned');
+    socket.off('muted');
+    socket.off('unmuted');
+  };
+}, [socket]);
+
   const handleJoinRoom = (room: Room) => {
     setCurrentRoom(room);
     setShowRoomList(false);
@@ -199,6 +250,12 @@ export const LobbyPage: React.FC = () => {
       loadUnreadCount();
     }, 1000);
   };
+  // WARNING //
+  const [warningData, setWarningData] = useState<{
+  reason: string;
+  warningCount: number;
+  adminUsername: string;
+} | null>(null);
 
   if (loading) {
     return (
@@ -308,5 +365,22 @@ export const LobbyPage: React.FC = () => {
         />
       )}
     </div>
+
+
+    return (
+  <div className="lobby-page">
+    {/* ... contenu existant ... */}
+    
+    {/* ✅ NOUVEAU: Warning Popup */}
+    {warningData && (
+      <WarningPopup
+        reason={warningData.reason}
+        warningCount={warningData.warningCount}
+        adminUsername={warningData.adminUsername}
+        onClose={() => setWarningData(null)}
+      />
+    )}
+  </div>
+
   );
 };
