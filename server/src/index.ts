@@ -16,18 +16,10 @@ import adminRoutes, { setSocketIO as setAdminSocketIO } from './routes/admin.rou
 const app = express();
 const server = http.createServer(app);
 
-// Initialize Socket.IO
+// ✅ Initialize Socket.IO (une seule fois!)
 const io = initializeSocket(server);
 
-// Créer le serveur Socket.IO
-const io = new Server(server, {
-  cors: {
-    origin: process.env.CLIENT_URL || 'http://localhost:5173',
-    credentials: true
-  }
-});
-
-// ✅ NOUVEAU: Injecter io dans admin.routes
+// ✅ Injecter io dans admin.routes
 setAdminSocketIO(io);
 
 // Middleware
@@ -71,7 +63,7 @@ app.use((req, res) => {
 server.listen(config.port, () => {
   console.log(`🚀 Serveur démarré sur le port ${config.port}`);
   console.log(`📡 Socket.IO prêt pour les connexions en temps réel`);
-  console.log(`🌍 Environment: ${config.nodeEnv}`);
+  console.log(`🌐 Environment: ${config.nodeEnv}`);
 });
 
 // Graceful shutdown

@@ -35,6 +35,13 @@ export const LobbyPage: React.FC = () => {
     username?: string;
   } | null>(null);
 
+  // ✅ State pour Warning (AVANT utilisation!)
+  const [warningData, setWarningData] = useState<{
+    reason: string;
+    warningCount: number;
+    adminUsername: string;
+  } | null>(null);
+
   // Récupérer le rôle de l'utilisateur
   const userRole = user?.role || 'user';
 
@@ -184,55 +191,59 @@ export const LobbyPage: React.FC = () => {
     };
   }, [loading, currentRoom]);
 
+  // ✅ NOUVEAU: useEffect pour écouter événements admin Socket.IO
   useEffect(() => {
-  if (!socket) return;
-  
-  // ... autres listeners existants
-  
-  // ✅ NOUVEAU: Écouter warnings
-  socket.on('warning', (data: { 
-    reason: string; 
-    warningCount: number; 
-    adminUsername: string;
-  }) => {
-    console.log('⚠️ Warning reçu:', data);
-    setWarningData(data);
+    const socket = socketService.getSocket();
+    if (!socket) return;
     
-    // Son de notification (optionnel)
-    const audio = new Audio('/sounds/warning.mp3');
-    audio.play().catch(() => {});
-  });
-  
-  // ✅ NOUVEAU: Écouter kick
-  socket.on('kicked', (data: { reason: string; adminUsername: string }) => {
-    alert(`Vous avez été expulsé par ${data.adminUsername}!\nRaison: ${data.reason}`);
-    window.location.href = '/login';
-  });
-  
-  // ✅ NOUVEAU: Écouter ban
-  socket.on('banned', (data: { reason: string; duration?: string }) => {
-    alert(`Vous avez été banni!\nRaison: ${data.reason}\nDurée: ${data.duration || 'permanent'}`);
-    window.location.href = '/login';
-  });
-  
-  // ✅ NOUVEAU: Écouter mute
-  socket.on('muted', (data: { reason: string; duration?: string }) => {
-    alert(`Vous avez été mute!\nRaison: ${data.reason}\nDurée: ${data.duration || 'permanent'}`);
-  });
-  
-  // ✅ NOUVEAU: Écouter unmute
-  socket.on('unmuted', () => {
-    alert('Vous pouvez à nouveau parler!');
-  });
-  
-  return () => {
-    socket.off('warning');
-    socket.off('kicked');
-    socket.off('banned');
-    socket.off('muted');
-    socket.off('unmuted');
-  };
-}, [socket]);
+    // Écouter warnings
+    socket.on('warning', (data: { 
+      reason: string; 
+      warningCount: number; 
+      adminUsername: string;
+    }) => {
+      console.log('⚠️ Warning reçu:', data);
+      setWarningData(data);
+      
+      // Son de notification (optionnel)
+      try {
+        const audio = new Audio('/sounds/warning.mp3');
+        audio.play().catch(() => {});
+      } catch (err) {
+        // Ignore
+      }
+    });
+    
+    // Écouter kick
+    socket.on('kicked', (data: { reason: string; adminUsername: string }) => {
+      alert(`Vous avez été expulsé par ${data.adminUsername}!\nRaison: ${data.reason}`);
+      window.location.href = '/login';
+    });
+    
+    // Écouter ban
+    socket.on('banned', (data: { reason: string; duration?: string }) => {
+      alert(`Vous avez été banni!\nRaison: ${data.reason}\nDurée: ${data.duration || 'permanent'}`);
+      window.location.href = '/login';
+    });
+    
+    // Écouter mute
+    socket.on('muted', (data: { reason: string; duration?: string }) => {
+      alert(`Vous avez été mute!\nRaison: ${data.reason}\nDurée: ${data.duration || 'permanent'}`);
+    });
+    
+    // Écouter unmute
+    socket.on('unmuted', () => {
+      alert('Vous pouvez à nouveau parler!');
+    });
+    
+    return () => {
+      socket.off('warning');
+      socket.off('kicked');
+      socket.off('banned');
+      socket.off('muted');
+      socket.off('unmuted');
+    };
+  }, []);
 
   const handleJoinRoom = (room: Room) => {
     setCurrentRoom(room);
@@ -250,12 +261,6 @@ export const LobbyPage: React.FC = () => {
       loadUnreadCount();
     }, 1000);
   };
-  // WARNING //
-  const [warningData, setWarningData] = useState<{
-  reason: string;
-  warningCount: number;
-  adminUsername: string;
-} | null>(null);
 
   if (loading) {
     return (
@@ -273,7 +278,7 @@ export const LobbyPage: React.FC = () => {
           <img src="/uworld-logo.png" alt="UWorld" className="header-logo" />
           <h1>UWorld</h1>
           
-          {/* ✅ NOUVEAU: Bouton Admin à côté du logo */}
+          {/* ✅ Bouton Admin à côté du logo */}
           {(userRole === 'moderator' || userRole === 'admin' || userRole === 'owner') && (
             <button 
               className="admin-button-left"
@@ -357,30 +362,23 @@ export const LobbyPage: React.FC = () => {
         />
       )}
 
-      {/* ✅ NOUVEAU: Panel Admin */}
+      {/* ✅ Panel Admin */}
       {showAdminPanel && (
         <AdminPanel 
           onClose={() => setShowAdminPanel(false)}
           userRole={userRole}
         />
       )}
+
+      {/* ✅ Warning Popup */}
+      {warningData && (
+        <WarningPopup
+          reason={warningData.reason}
+          warningCount={warningData.warningCount}
+          adminUsername={warningData.adminUsername}
+          onClose={() => setWarningData(null)}
+        />
+      )}
     </div>
-
-
-    return (
-  <div className="lobby-page">
-    {/* ... contenu existant ... */}
-    
-    {/* ✅ NOUVEAU: Warning Popup */}
-    {warningData && (
-      <WarningPopup
-        reason={warningData.reason}
-        warningCount={warningData.warningCount}
-        adminUsername={warningData.adminUsername}
-        onClose={() => setWarningData(null)}
-      />
-    )}
-  </div>
-
   );
 };
