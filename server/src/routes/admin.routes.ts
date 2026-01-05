@@ -79,7 +79,7 @@ router.post('/ban', requirePermission('ban_temporary'), async (req, res) => {
     // Logger l'action
     await prisma.adminLog.create({
       data: {
-        adminId: admin.id,
+        adminId: admin.userId,
         targetUserId: target.id,
         action: 'ban',
         reason,
@@ -137,7 +137,7 @@ router.post('/unban', requirePermission('unban'), async (req, res) => {
     
     await prisma.adminLog.create({
       data: {
-        adminId: admin.id,
+        adminId: admin.userId,
         targetUserId: target.id,
         action: 'unban',
         reason: `Débanni par ${admin.username}`
@@ -204,7 +204,7 @@ router.post('/mute', requirePermission('mute_temporary'), async (req, res) => {
     
     await prisma.adminLog.create({
       data: {
-        adminId: admin.id,
+        adminId: admin.userId,
         targetUserId: target.id,
         action: 'mute',
         reason,
@@ -256,7 +256,7 @@ router.post('/unmute', requirePermission('unmute'), async (req, res) => {
     
     await prisma.adminLog.create({
       data: {
-        adminId: admin.id,
+        adminId: admin.userId,
         targetUserId: target.id,
         action: 'unmute',
         reason: `Unmute par ${admin.username}`
@@ -298,7 +298,7 @@ router.post('/warn', requirePermission('warn'), async (req, res) => {
     
     await prisma.adminLog.create({
       data: {
-        adminId: admin.id,
+        adminId: admin.userId,
         targetUserId: target.id,
         action: 'warn',
         reason,
@@ -376,7 +376,7 @@ router.post('/badge/give', requirePermission('give_event_badges'), async (req, r
     
     await prisma.adminLog.create({
       data: {
-        adminId: admin.id,
+        adminId: admin.userId,
         targetUserId: target.id,
         action: 'give_badge',
         details: { 
@@ -444,7 +444,7 @@ router.post('/badge/remove', requirePermission('remove_badge'), async (req, res)
     
     await prisma.adminLog.create({
       data: {
-        adminId: admin.id,
+        adminId: admin.userId,
         targetUserId: target.id,
         action: 'remove_badge',
         details: { 
@@ -499,7 +499,7 @@ router.post('/coins/give', requirePermission('give_coins'), async (req, res) => 
     
     await prisma.adminLog.create({
       data: {
-        adminId: admin.id,
+        adminId: admin.userId,
         targetUserId: target.id,
         action: 'give_coins',
         details: { 
@@ -551,7 +551,7 @@ router.post('/nuggets/give', requirePermission('give_nuggets'), async (req, res)
     
     await prisma.adminLog.create({
       data: {
-        adminId: admin.id,
+        adminId: admin.userId,
         targetUserId: target.id,
         action: 'give_nuggets',
         details: { 
