@@ -4,6 +4,7 @@ import { config } from './config';
 export interface JWTPayload {
   userId: string;
   username: string;
+  role?: string;  // ← AJOUTER: Support du rôle
 }
 
 export const generateToken = (payload: JWTPayload): string => {
