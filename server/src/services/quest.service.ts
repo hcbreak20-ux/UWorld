@@ -79,7 +79,6 @@ export class QuestService {
   async getUserQuests(userId: string) {
     try {
       const userQuests = await prisma.userQuest.findMany({
-        include: { quest: true, user: true },
         where: { userId: userId },
         include: {
           quest: true,
@@ -203,10 +202,9 @@ export class QuestService {
   /**
    * Réclamer la récompense d'une quête
    */
-  async claimReward(userId: string, questId: number) {
+  async claimReward(userId: string, questId: string) {
     try {
       const userQuest = await prisma.userQuest.findUnique({
-        include: { quest: true, user: true },
         where: {
           userId_questId: {
             userId: userId,
@@ -227,10 +225,9 @@ export class QuestService {
         throw new Error('Quête non complétée');
       }
 
-      // Récupérer les récompenses depuis le JSON
-      const reward = userQuest.quest.reward as any;
-      const coins = reward?.coins || 0;
-      const experience = reward?.experience || 0;
+      // Récupérer les récompenses
+      const coins = userQuest.quest.coinsReward || 0;
+      const experience = userQuest.quest.xpReward || 0;
 
       // Donner les coins
       if (coins > 0) {
@@ -337,7 +334,6 @@ export class QuestService {
   async ensureUserHasQuests(userId: string) {
     try {
       const tutorialCount = await prisma.userQuest.count({
-        include: { quest: true, user: true },
         where: {
           userId: userId,
           quest: { type: QuestType.TUTORIAL },

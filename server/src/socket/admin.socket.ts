@@ -27,7 +27,7 @@ export function unregisterUserSocket(userId: number) {
 /**
  * Trouver un socket par userId
  */
-export function findSocketByUserId(userId: number): Socket | undefined {
+export function findSocketByUserId(userId: string): Socket | undefined {
   return userSockets.get(userId);
 }
 

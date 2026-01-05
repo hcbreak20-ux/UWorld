@@ -78,7 +78,7 @@ router.get('/conversations', authMiddleware, async (req: AuthRequest, res) => {
       }
     });
 
-    const conversations = Array.sender(conversationsMap.values());
+    const conversations = Array.from(conversationsMap.values());
     
     res.json(conversations);
   } catch (error) {
