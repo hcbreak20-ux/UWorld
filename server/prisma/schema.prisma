@@ -2,7 +2,7 @@
 // 🎯 SCHEMA PRISMA COMPLET - UWORLD
 // Combine: Ancien système + Admin système
 // ==========================================
-
+}
 generator client {
   provider = "prisma-client-js"
 }
