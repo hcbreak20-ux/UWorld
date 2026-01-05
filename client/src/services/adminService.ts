@@ -75,12 +75,14 @@ export const adminService = {
   },
 
   /**
-   * KICK un utilisateur (via Socket.IO normalement)
+   * KICK un utilisateur
    */
   async kickUser(username: string, reason: string) {
-    // Note: Le kick se fait normalement via Socket.IO
-    // Mais on peut créer une route REST si nécessaire
-    throw new Error('Le kick se fait via les commandes chat: :kick username raison');
+    const response = await api.post('/admin/kick', {
+      targetUsername: username,
+      reason
+    });
+    return response.data;
   },
 
   /**
@@ -158,7 +160,7 @@ export const adminService = {
    */
   async getStats(): Promise<AdminStats> {
     const response = await api.get('/admin/stats');
-    return response.data; // Pas response.data.stats
+    return response.data;
   },
 
   /**
@@ -168,7 +170,7 @@ export const adminService = {
    */
   async getLogs(limit: number = 50): Promise<AdminLog[]> {
     const response = await api.get(`/admin/logs?limit=${limit}`);
-    return response.data; // Pas response.data.logs
+    return response.data;
   },
 
   /**
