@@ -114,13 +114,10 @@ export class QuestService {
       if (quests.length === 0) return;
 
       for (const quest of quests) {
-        // Récupérer le targetCount depuis reward JSON
-        const reward = quest.reward as any;
-        const targetCount = reward?.targetCount || 10;
+        const targetCount = quest.targetCount || 10;
 
         const userQuest = await prisma.userQuest.findUnique({
-          include: { quest: true, user: true },
-        where: {
+          where: {
             userId_questId: {
               userId: userId,
               questId: quest.id,

@@ -8,19 +8,19 @@ import {
 } from '../middleware/admin.middleware';
 
 // Map pour suivre les sockets par userId
-const userSockets = new Map<number, Socket>();
+const userSockets = new Map<string, Socket>();
 
 /**
  * Enregistrer un socket
  */
-export function registerUserSocket(userId: number, socket: Socket) {
+export function registerUserSocket(userId: string, socket: Socket) {
   userSockets.set(userId, socket);
 }
 
 /**
  * Désenregistrer un socket
  */
-export function unregisterUserSocket(userId: number) {
+export function unregisterUserSocket(userId: string) {
   userSockets.delete(userId);
 }
 
@@ -34,7 +34,7 @@ export function findSocketByUserId(userId: string): Socket | undefined {
 /**
  * Trouver un userId par socket
  */
-export function findUserIdBySocket(socket: Socket): number | undefined {
+export function findUserIdBySocket(socket: Socket): string | undefined {
   for (const [userId, s] of userSockets.entries()) {
     if (s.id === socket.id) {
       return userId;
