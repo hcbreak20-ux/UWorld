@@ -55,6 +55,7 @@ export class AuthService {
         motto: true,
         avatar: true,
         createdAt: true,
+        role: true,  // ← AJOUTER: Récupérer le rôle
       },
     });
 
@@ -69,8 +70,12 @@ console.log(`✅ Quêtes assignées au nouveau joueur: ${user.username}`);
   // Ne pas bloquer l'inscription si l'assignation échoue
 }
 
-    // Générer le token JWT
-    const token = generateToken({ userId: user.id, username: user.username });
+    // ✅ CORRIGÉ: Générer le token JWT avec le rôle
+    const token = generateToken({ 
+      userId: user.id, 
+      username: user.username,
+      role: user.role  // ← AJOUTER: Inclure le rôle dans le token
+    });
 
     return { user, token };
   }
@@ -100,8 +105,12 @@ console.log(`✅ Quêtes assignées au nouveau joueur: ${user.username}`);
       data: { lastLogin: new Date() },
     });
 
-    // Générer le token JWT
-    const token = generateToken({ userId: user.id, username: user.username });
+    // ✅ CORRIGÉ: Générer le token JWT avec le rôle
+    const token = generateToken({ 
+      userId: user.id, 
+      username: user.username,
+      role: user.role  // ← AJOUTER: Inclure le rôle dans le token
+    });
 
     // Retourner les données (sans le mot de passe)
     const { password: _, ...userWithoutPassword } = user;
@@ -124,6 +133,7 @@ console.log(`✅ Quêtes assignées au nouveau joueur: ${user.username}`);
         avatar: true,
         createdAt: true,
         lastLogin: true,
+        role: true,  // ← AJOUTER: Récupérer le rôle
       },
     });
 

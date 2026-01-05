@@ -2,11 +2,12 @@ import { api } from './api';
 
 export interface AdminStats {
   totalUsers: number;
-  onlineUsers: number;
-  totalRooms: number;
-  totalBadges: number;
   bannedUsers: number;
   mutedUsers: number;
+  totalBadges: number;
+  totalLogs: number;
+  totalRooms: number;
+  publicRooms: number;
 }
 
 export interface AdminLog {
@@ -14,11 +15,12 @@ export interface AdminLog {
   adminId: string;
   targetUserId: string;
   action: string;
-  reason: string;
+  reason?: string;
   details: any;
   createdAt: string;
   admin: {
     username: string;
+    role: string;
   };
   targetUser: {
     username: string;
@@ -42,7 +44,7 @@ export const adminService = {
    */
   async banUser(username: string, duration: string, reason: string) {
     const response = await api.post('/admin/ban', {
-      username,
+      targetUsername: username,
       duration,
       reason
     });
@@ -54,7 +56,7 @@ export const adminService = {
    */
   async muteUser(username: string, duration: string, reason: string) {
     const response = await api.post('/admin/mute', {
-      username,
+      targetUsername: username,
       duration,
       reason
     });
@@ -66,21 +68,19 @@ export const adminService = {
    */
   async warnUser(username: string, reason: string) {
     const response = await api.post('/admin/warn', {
-      username,
+      targetUsername: username,
       reason
     });
     return response.data;
   },
 
   /**
-   * KICK un utilisateur
+   * KICK un utilisateur (via Socket.IO normalement)
    */
   async kickUser(username: string, reason: string) {
-    const response = await api.post('/admin/kick', {
-      username,
-      reason
-    });
-    return response.data;
+    // Note: Le kick se fait normalement via Socket.IO
+    // Mais on peut créer une route REST si nécessaire
+    throw new Error('Le kick se fait via les commandes chat: :kick username raison');
   },
 
   /**
@@ -88,7 +88,7 @@ export const adminService = {
    */
   async unbanUser(username: string) {
     const response = await api.post('/admin/unban', {
-      username
+      targetUsername: username
     });
     return response.data;
   },
@@ -98,50 +98,54 @@ export const adminService = {
    */
   async unmuteUser(username: string) {
     const response = await api.post('/admin/unmute', {
-      username
+      targetUsername: username
     });
     return response.data;
   },
 
   /**
    * DONNER un badge
+   * Route: /admin/badge/give
    */
   async giveBadge(username: string, badgeKey: string) {
-    const response = await api.post('/admin/give-badge', {
-      username,
-      badgeKey
+    const response = await api.post('/admin/badge/give', {
+      targetUsername: username,
+      badgeCode: badgeKey
     });
     return response.data;
   },
 
   /**
    * RETIRER un badge
+   * Route: /admin/badge/remove
    */
   async removeBadge(username: string, badgeKey: string) {
-    const response = await api.post('/admin/remove-badge', {
-      username,
-      badgeKey
+    const response = await api.post('/admin/badge/remove', {
+      targetUsername: username,
+      badgeCode: badgeKey
     });
     return response.data;
   },
 
   /**
    * DONNER des coins
+   * Route: /admin/coins/give
    */
   async giveCoins(username: string, amount: number) {
-    const response = await api.post('/admin/give-coins', {
-      username,
+    const response = await api.post('/admin/coins/give', {
+      targetUsername: username,
       amount
     });
     return response.data;
   },
 
   /**
-   * DONNER des gems
+   * DONNER des gems (uNuggets)
+   * Route: /admin/nuggets/give
    */
   async giveGems(username: string, amount: number) {
-    const response = await api.post('/admin/give-gems', {
-      username,
+    const response = await api.post('/admin/nuggets/give', {
+      targetUsername: username,
       amount
     });
     return response.data;
@@ -149,18 +153,22 @@ export const adminService = {
 
   /**
    * RÉCUPÉRER les statistiques
+   * Route: /admin/stats
+   * Retourne directement l'objet stats
    */
   async getStats(): Promise<AdminStats> {
     const response = await api.get('/admin/stats');
-    return response.data;
+    return response.data; // Pas response.data.stats
   },
 
   /**
    * RÉCUPÉRER les logs
+   * Route: /admin/logs
+   * Retourne directement l'array
    */
   async getLogs(limit: number = 50): Promise<AdminLog[]> {
     const response = await api.get(`/admin/logs?limit=${limit}`);
-    return response.data.logs;
+    return response.data; // Pas response.data.logs
   },
 
   /**
