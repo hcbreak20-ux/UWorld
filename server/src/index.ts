@@ -4,7 +4,6 @@ import cors from 'cors';
 import { config } from './utils/config';
 import { initializeSocket } from './socket';
 import authRoutes from './routes/auth.routes';
-import adminRoutes from './routes/admin.routes';
 import roomRoutes from './routes/room.routes';
 import avatarRoutes from './routes/avatar.routes';
 import questRoutes from './routes/quest.routes';
@@ -12,12 +11,24 @@ import levelRoutes from './routes/level.routes';
 import badgeRoutes from './routes/badge.routes';
 import userRoutes from './routes/user.routes';
 import messageRoutes from './routes/message.routes';
+import adminRoutes, { setSocketIO as setAdminSocketIO } from './routes/admin.routes';
 
 const app = express();
 const server = http.createServer(app);
 
 // Initialize Socket.IO
 const io = initializeSocket(server);
+
+// Créer le serveur Socket.IO
+const io = new Server(server, {
+  cors: {
+    origin: process.env.CLIENT_URL || 'http://localhost:5173',
+    credentials: true
+  }
+});
+
+// ✅ NOUVEAU: Injecter io dans admin.routes
+setAdminSocketIO(io);
 
 // Middleware
 app.use(cors({

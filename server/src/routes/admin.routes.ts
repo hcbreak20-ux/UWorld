@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { prisma } from '../db';
-import { authMiddleware } from '../middleware/auth';  // ← AJOUTER
+import { authMiddleware } from '../middleware/auth';
 import { 
   requireRole, 
   requirePermission,
@@ -16,6 +16,13 @@ const router = Router();
 // ✅ CRITIQUE: Appliquer authMiddleware à TOUTES les routes admin
 router.use(authMiddleware);
 
+// ✅ Socket.IO instance (à injecter depuis index.ts)
+let io: any = null;
+
+export const setSocketIO = (socketIO: any) => {
+  io = socketIO;
+};
+
 // ==================
 // MODÉRATION
 // ==================
@@ -29,7 +36,6 @@ router.post('/ban', requirePermission('ban_temporary'), async (req, res) => {
   const admin = (req as any).user;
   
   try {
-    // Validation
     if (!targetUsername || !duration || !reason) {
       return res.status(400).json({ 
         error: 'Paramètres manquants',
@@ -37,7 +43,6 @@ router.post('/ban', requirePermission('ban_temporary'), async (req, res) => {
       });
     }
     
-    // Trouver l'utilisateur cible
     const target = await prisma.user.findUnique({
       where: { username: targetUsername }
     });
@@ -46,27 +51,23 @@ router.post('/ban', requirePermission('ban_temporary'), async (req, res) => {
       return res.status(404).json({ error: 'Utilisateur introuvable' });
     }
     
-    // Vérifier la hiérarchie
     if (!canActOnTarget(admin.role as UserRole, target.role as UserRole)) {
       return res.status(403).json({ 
         error: 'Impossible de bannir un utilisateur de rang égal ou supérieur' 
       });
     }
     
-    // Vérifier la durée selon le rôle
     const durationCheck = validateDuration(admin.role as UserRole, duration);
     if (!durationCheck.valid) {
       return res.status(403).json({ error: durationCheck.error });
     }
     
-    // Calculer la date d'expiration
     let banExpiresAt = null;
     if (duration !== 'permanent') {
       const durationMs = parseDuration(duration);
       banExpiresAt = new Date(Date.now() + durationMs);
     }
     
-    // Bannir l'utilisateur
     await prisma.user.update({
       where: { id: target.id },
       data: {
@@ -76,7 +77,6 @@ router.post('/ban', requirePermission('ban_temporary'), async (req, res) => {
       }
     });
     
-    // Logger l'action
     await prisma.adminLog.create({
       data: {
         adminId: admin.userId,
@@ -91,10 +91,26 @@ router.post('/ban', requirePermission('ban_temporary'), async (req, res) => {
       }
     });
     
+    // ✅ NOUVEAU: Déconnecter le joueur via Socket.IO
+    if (io) {
+      const sockets = await io.fetchSockets();
+      const targetSocket = sockets.find((s: any) => s.userId === target.id);
+      
+      if (targetSocket) {
+        targetSocket.emit('banned', {
+          reason,
+          duration,
+          expiresAt: banExpiresAt
+        });
+        targetSocket.disconnect(true);
+        console.log(`🚫 ${targetUsername} banni et déconnecté`);
+      }
+    }
+    
     res.json({ 
       success: true,
       message: `${targetUsername} a été banni`,
-      duration: duration,
+      duration,
       expiresAt: banExpiresAt,
       reason
     });
@@ -215,6 +231,21 @@ router.post('/mute', requirePermission('mute_temporary'), async (req, res) => {
       }
     });
     
+    // ✅ NOUVEAU: Notifier le joueur via Socket.IO
+    if (io) {
+      const sockets = await io.fetchSockets();
+      const targetSocket = sockets.find((s: any) => s.userId === target.id);
+      
+      if (targetSocket) {
+        targetSocket.emit('muted', {
+          reason,
+          duration,
+          expiresAt: muteExpiresAt
+        });
+        console.log(`🔇 ${targetUsername} mute et notifié`);
+      }
+    }
+    
     res.json({ 
       success: true,
       message: `${targetUsername} a été mute`,
@@ -263,6 +294,17 @@ router.post('/unmute', requirePermission('unmute'), async (req, res) => {
       }
     });
     
+    // ✅ NOUVEAU: Notifier le joueur
+    if (io) {
+      const sockets = await io.fetchSockets();
+      const targetSocket = sockets.find((s: any) => s.userId === target.id);
+      
+      if (targetSocket) {
+        targetSocket.emit('unmuted');
+        console.log(`🔊 ${targetUsername} unmute et notifié`);
+      }
+    }
+    
     res.json({ success: true, message: `${targetUsername} peut à nouveau parler` });
     
   } catch (error) {
@@ -272,7 +314,7 @@ router.post('/unmute', requirePermission('unmute'), async (req, res) => {
 });
 
 /**
- * Avertir un joueur
+ * ✅ NOUVEAU: Avertir un joueur avec notification Socket.IO
  * POST /api/admin/warn
  */
 router.post('/warn', requirePermission('warn'), async (req, res) => {
@@ -288,7 +330,6 @@ router.post('/warn', requirePermission('warn'), async (req, res) => {
       return res.status(404).json({ error: 'Utilisateur introuvable' });
     }
     
-    // Incrémenter les warnings
     const updated = await prisma.user.update({
       where: { id: target.id },
       data: {
@@ -308,6 +349,21 @@ router.post('/warn', requirePermission('warn'), async (req, res) => {
       }
     });
     
+    // ✅ NOUVEAU: Envoyer notification warning au joueur
+    if (io) {
+      const sockets = await io.fetchSockets();
+      const targetSocket = sockets.find((s: any) => s.userId === target.id);
+      
+      if (targetSocket) {
+        targetSocket.emit('warning', {
+          reason,
+          warningCount: updated.warnings,
+          adminUsername: admin.username
+        });
+        console.log(`⚠️ ${targetUsername} averti (${updated.warnings} warnings)`);
+      }
+    }
+    
     res.json({ 
       success: true,
       message: `${targetUsername} a été averti`,
@@ -316,6 +372,72 @@ router.post('/warn', requirePermission('warn'), async (req, res) => {
     
   } catch (error) {
     console.error('Erreur warn:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+/**
+ * ✅ NOUVEAU: Kick un joueur (déconnecter immédiatement)
+ * POST /api/admin/kick
+ */
+router.post('/kick', requirePermission('kick'), async (req, res) => {
+  const { targetUsername, reason } = req.body;
+  const admin = (req as any).user;
+  
+  try {
+    if (!targetUsername || !reason) {
+      return res.status(400).json({ error: 'Paramètres manquants' });
+    }
+    
+    const target = await prisma.user.findUnique({
+      where: { username: targetUsername }
+    });
+    
+    if (!target) {
+      return res.status(404).json({ error: 'Utilisateur introuvable' });
+    }
+    
+    if (!canActOnTarget(admin.role as UserRole, target.role as UserRole)) {
+      return res.status(403).json({ 
+        error: 'Impossible de kick un utilisateur de rang égal ou supérieur' 
+      });
+    }
+    
+    await prisma.adminLog.create({
+      data: {
+        adminId: admin.userId,
+        targetUserId: target.id,
+        action: 'kick',
+        reason
+      }
+    });
+    
+    // ✅ Déconnecter le joueur via Socket.IO
+    if (io) {
+      const sockets = await io.fetchSockets();
+      const targetSocket = sockets.find((s: any) => s.userId === target.id);
+      
+      if (targetSocket) {
+        targetSocket.emit('kicked', { reason, adminUsername: admin.username });
+        setTimeout(() => {
+          targetSocket.disconnect(true);
+        }, 1000); // 1 seconde pour recevoir le message
+        console.log(`👢 ${targetUsername} kické`);
+      } else {
+        return res.status(404).json({ error: 'Joueur non connecté' });
+      }
+    } else {
+      return res.status(500).json({ error: 'Socket.IO non disponible' });
+    }
+    
+    res.json({ 
+      success: true,
+      message: `${targetUsername} a été expulsé`,
+      reason
+    });
+    
+  } catch (error) {
+    console.error('Erreur kick:', error);
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });
@@ -349,7 +471,6 @@ router.post('/badge/give', requirePermission('give_event_badges'), async (req, r
       return res.status(404).json({ error: 'Utilisateur ou badge introuvable' });
     }
     
-    // Vérifier si le badge est déjà possédé
     const existing = await prisma.userBadge.findUnique({
       where: {
         userId_badgeId: {
@@ -365,12 +486,11 @@ router.post('/badge/give', requirePermission('give_event_badges'), async (req, r
       });
     }
     
-    // Donner le badge
     await prisma.userBadge.create({
       data: {
         userId: target.id,
         badgeId: badge.id,
-        givenBy: admin.id
+        givenBy: admin.userId
       }
     });
     
@@ -618,7 +738,6 @@ router.get('/user/:username', requirePermission('view_user_info'), async (req, r
       return res.status(404).json({ error: 'Utilisateur introuvable' });
     }
     
-    // Ne pas retourner le mot de passe
     const { password, ...userInfo } = user;
     
     res.json(userInfo);
