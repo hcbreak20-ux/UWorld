@@ -815,4 +815,164 @@ router.get('/logs', requirePermission('view_all_logs'), async (req, res) => {
   }
 });
 
+/**
+ * Supprimer un log
+ * DELETE /api/admin/logs/:logId
+ */
+router.delete('/logs/:logId', requirePermission('delete_logs'), async (req, res) => {
+  const { logId } = req.params;
+  const admin = (req as any).user;
+  
+  try {
+    await prisma.adminLog.delete({
+      where: { id: logId }
+    });
+    
+    res.json({ 
+      success: true, 
+      message: 'Log supprimé' 
+    });
+  } catch (error) {
+    console.error('Erreur delete log:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+/**
+ * Supprimer plusieurs logs
+ * POST /api/admin/logs/delete-many
+ */
+router.post('/logs/delete-many', requirePermission('delete_logs'), async (req, res) => {
+  const { logIds } = req.body;
+  const admin = (req as any).user;
+  
+  try {
+    await prisma.adminLog.deleteMany({
+      where: {
+        id: {
+          in: logIds
+        }
+      }
+    });
+    
+    res.json({ 
+      success: true, 
+      message: `${logIds.length} logs supprimés` 
+    });
+  } catch (error) {
+    console.error('Erreur delete logs:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+/**
+ * Obtenir tous les utilisateurs
+ * GET /api/admin/users
+ */
+router.get('/users', requirePermission('view_stats'), async (req, res) => {
+  try {
+    const users = await prisma.user.findMany({
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        level: true,
+        coins: true,
+        gems: true,
+        role: true,
+        warnings: true,
+        createdAt: true
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+    
+    res.json(users);
+  } catch (error) {
+    console.error('Erreur get users:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+/**
+ * Obtenir les utilisateurs bannis
+ * GET /api/admin/users/banned
+ */
+router.get('/users/banned', requirePermission('view_stats'), async (req, res) => {
+  try {
+    const users = await prisma.user.findMany({
+      where: { isBanned: true },
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        banReason: true,
+        banExpiresAt: true,
+        createdAt: true
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+    
+    res.json(users);
+  } catch (error) {
+    console.error('Erreur banned users:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+/**
+ * Obtenir les utilisateurs mutes
+ * GET /api/admin/users/muted
+ */
+router.get('/users/muted', requirePermission('view_stats'), async (req, res) => {
+  try {
+    const users = await prisma.user.findMany({
+      where: { isMuted: true },
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        muteReason: true,
+        muteExpiresAt: true,
+        createdAt: true
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+    
+    res.json(users);
+  } catch (error) {
+    console.error('Erreur muted users:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+/**
+ * Obtenir toutes les salles
+ * GET /api/admin/rooms
+ */
+router.get('/rooms', requirePermission('view_stats'), async (req, res) => {
+  try {
+    const rooms = await prisma.room.findMany({
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        maxUsers: true,
+        isPublic: true,
+        createdAt: true,
+        owner: {
+          select: {
+            username: true
+          }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+    
+    res.json(rooms);
+  } catch (error) {
+    console.error('Erreur rooms:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 export default router;

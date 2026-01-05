@@ -2,6 +2,7 @@ import express, { Request, Response } from 'express';
 import { body, validationResult } from 'express-validator';
 import { AuthService } from '../services/auth.service';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
+import { prisma } from '../db';
 
 const router = express.Router();
 
@@ -45,6 +46,34 @@ router.post('/login', loginValidation, async (req: Request, res: Response): Prom
     if (!errors.isEmpty()) {
       res.status(400).json({ errors: errors.array() });
       return;
+    }
+
+    // ✅ NOUVEAU: Vérifier le ban AVANT le login
+    const user = await prisma.user.findUnique({
+      where: { username: req.body.username }
+    });
+
+    if (user?.isBanned) {
+      // Vérifier si le ban est expiré
+      if (user.banExpiresAt && user.banExpiresAt < new Date()) {
+        // Ban expiré, débannir automatiquement
+        await prisma.user.update({
+          where: { id: user.id },
+          data: {
+            isBanned: false,
+            banExpiresAt: null,
+            banReason: null
+          }
+        });
+      } else {
+        // Ban toujours actif
+        const banMessage = user.banExpiresAt 
+          ? `Vous êtes banni jusqu'au ${user.banExpiresAt.toLocaleString('fr-FR')}. Raison: ${user.banReason || 'Non spécifiée'}`
+          : `Vous êtes banni définitivement. Raison: ${user.banReason || 'Non spécifiée'}`;
+        
+        res.status(403).json({ error: banMessage });
+        return;
+      }
     }
 
     const result = await AuthService.login(req.body);
