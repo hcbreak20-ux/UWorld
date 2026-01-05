@@ -286,14 +286,14 @@ model AdminLog {
   id           String    @id @default(uuid())
   action       String
   adminId      String
-  targetUserId String
-  reason       String?   // ✅ CORRIGÉ: optionnel
-  details      Json?     // ✅ CORRIGÉ: Json avec majuscule
+  targetUserId String?   // ✅ CORRIGÉ: optionnel (pas toujours une cible)
+  reason       String?
+  details      Json?
   duration     Int?
   createdAt    DateTime  @default(now())
 
   admin        User      @relation("AdminActions", fields: [adminId], references: [id], onDelete: Cascade)
-  targetUser   User      @relation("TargetUser", fields: [targetUserId], references: [id], onDelete: Cascade)
+  targetUser   User?     @relation("TargetUser", fields: [targetUserId], references: [id], onDelete: Cascade)
 
   @@index([adminId])
   @@index([targetUserId])

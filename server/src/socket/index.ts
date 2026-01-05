@@ -1048,7 +1048,7 @@ export const initializeSocket = (server: HTTPServer) => {
             id: true,
             name: true,
             ownerId: true,
-            maxPlayers: true,
+            maxUsers: true,
             createdAt: true,
             owner: {
               select: {
