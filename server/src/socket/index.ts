@@ -102,7 +102,7 @@ export const initializeSocket = (server: HTTPServer) => {
 
     // ✅ NOUVEAU: Enregistrer le socket pour les commandes admin
     if (socket.userId) {
-      registerUserSocket(parseInt(socket.userId), socket);
+      registerUserSocket(socket.userId, socket);
     }
 
     // ✅ NOUVEAU: Setup des événements admin
@@ -122,7 +122,7 @@ export const initializeSocket = (server: HTTPServer) => {
 
       // ✅ NOUVEAU: Désenregistrer le socket
       if (socket.userId) {
-        unregisterUserSocket(parseInt(socket.userId));
+        unregisterUserSocket(socket.userId);
       }
 
       if (socket.currentRoom && socket.userId) {
