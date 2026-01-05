@@ -348,3 +348,4 @@ enum ResetTime {
   WEEKLY
   MONTHLY
 }
+}
