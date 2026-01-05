@@ -278,24 +278,23 @@ model UserBadge {
 }
 
 // ==========================================
-// 👑 MODÈLE ADMINLOG
+// 👑 MODÈLE ADMINLOG // APRES AVOIR AJOUTER LE PANEL ADMIN
 // ==========================================
 
 model AdminLog {
-  id           String   @id @default(uuid())
+  id           String    @id @default(uuid())
+  action       String
   adminId      String
-  targetUserId String?
-  action       String   // ban, unban, mute, unmute, kick, give_badge, etc.
-  reason       String?
-  details      Json?
-  createdAt    DateTime @default(now())
-  
-  admin        User     @relation("AdminActions", fields: [adminId], references: [id])
-  targetUser   User?    @relation("TargetUser", fields: [targetUserId], references: [id])
-  
+  targetUserId String
+  reason       String
+  duration     Int?
+  createdAt    DateTime  @default(now())
+
+  admin        User      @relation("AdminActions", fields: [adminId], references: [id], onDelete: Cascade)
+  targetUser   User      @relation("TargetUser", fields: [targetUserId], references: [id], onDelete: Cascade)
+
   @@index([adminId])
   @@index([targetUserId])
-  @@index([action])
   @@index([createdAt])
 }
 
