@@ -177,41 +177,53 @@ export const adminService = {
   async getBadges(): Promise<Badge[]> {
     const response = await api.get('/badges');
     return response.data;
+  },
+
+  /**
+   * SUPPRIMER un log
+   */
+  async deleteLog(logId: string) {
+    const response = await api.delete(`/admin/logs/${logId}`);
+    return response.data;
+  },
+
+  /**
+   * SUPPRIMER plusieurs logs
+   */
+  async deleteLogs(logIds: string[]) {
+    const response = await api.post('/admin/logs/delete-many', { logIds });
+    return response.data;
+  },
+
+  /**
+   * OBTENIR la liste des utilisateurs
+   */
+  async getUsers() {
+    const response = await api.get('/admin/users');
+    return response.data;
+  },
+
+  /**
+   * OBTENIR les utilisateurs bannis
+   */
+  async getBannedUsers() {
+    const response = await api.get('/admin/users/banned');
+    return response.data;
+  },
+
+  /**
+   * OBTENIR les utilisateurs mutes
+   */
+  async getMutedUsers() {
+    const response = await api.get('/admin/users/muted');
+    return response.data;
+  },
+
+  /**
+   * OBTENIR les salles
+   */
+  async getRooms() {
+    const response = await api.get('/admin/rooms');
+    return response.data;
   }
 };
-
-// Supprimer un log
-async deleteLog(logId: string) {
-  const response = await api.delete(`/admin/logs/${logId}`);
-  return response.data;
-},
-
-// Supprimer plusieurs logs
-async deleteLogs(logIds: string[]) {
-  const response = await api.post('/admin/logs/delete-many', { logIds });
-  return response.data;
-},
-
-// Obtenir la liste des utilisateurs
-async getUsers() {
-  const response = await api.get('/admin/users');
-  return response.data;
-},
-
-// Obtenir les utilisateurs bannis
-async getBannedUsers() {
-  const response = await api.get('/admin/users/banned');
-  return response.data;
-},
-
-// Obtenir les utilisateurs mutes
-async getMutedUsers() {
-  const response = await api.get('/admin/users/muted');
-  return response.data;
-},
-
-// Obtenir les salles
-async getRooms() {
-  const response = await api.get('/admin/rooms');
-  return response.data;
-}
