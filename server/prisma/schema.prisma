@@ -97,7 +97,7 @@ model Room {
   id          String   @id @default(uuid())
   name        String
   description String   @default("")
-  isPrivate   Boolean  @dafault(false)
+  isPrivate   Boolean  @default(false)  // ✅ CORRIGÉ: default au lieu de dafault
   ownerId     String
   isPublic    Boolean  @default(true)
   maxUsers    Int      @default(25)
@@ -279,7 +279,7 @@ model UserBadge {
 }
 
 // ==========================================
-// 👑 MODÈLE ADMINLOG // APRES AVOIR AJOUTER LE PANEL ADMIN
+// 👑 MODÈLE ADMINLOG
 // ==========================================
 
 model AdminLog {
@@ -287,8 +287,8 @@ model AdminLog {
   action       String
   adminId      String
   targetUserId String
-  reason       String
-  details      json?
+  reason       String?   // ✅ CORRIGÉ: optionnel
+  details      Json?     // ✅ CORRIGÉ: Json avec majuscule
   duration     Int?
   createdAt    DateTime  @default(now())
 
