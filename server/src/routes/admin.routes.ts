@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { prisma } from '../db';
+import { authMiddleware } from '../middleware/auth';  // ← AJOUTER
 import { 
   requireRole, 
   requirePermission,
@@ -11,6 +12,9 @@ import {
 } from '../middleware/admin.middleware';
 
 const router = Router();
+
+// ✅ CRITIQUE: Appliquer authMiddleware à TOUTES les routes admin
+router.use(authMiddleware);
 
 // ==================
 // MODÉRATION
@@ -345,14 +349,7 @@ router.post('/badge/give', requirePermission('give_event_badges'), async (req, r
       return res.status(404).json({ error: 'Utilisateur ou badge introuvable' });
     }
     
-    // Vérifier si le badge est admin-only
-    if (badge.isAdminOnly && admin.role !== 'admin' && admin.role !== 'owner') {
-      return res.status(403).json({ 
-        error: 'Seuls les admins peuvent donner ce badge' 
-      });
-    }
-    
-    // Vérifier si l'utilisateur a déjà le badge
+    // Vérifier si le badge est déjà possédé
     const existing = await prisma.userBadge.findUnique({
       where: {
         userId_badgeId: {
