@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { adminService, AdminLog, AdminStats, Badge } from '../services/adminService';
 import './AdminPanel.css';
 
 interface AdminPanelProps {
@@ -84,44 +85,29 @@ const ModerationTab: React.FC<{ userRole: string }> = ({ userRole }) => {
     setMessage('');
 
     try {
-      const token = localStorage.getItem('token');
-      
-      let endpoint = '';
-      let body: any = { targetUsername, reason };
+      let result;
 
-      if (action === 'ban' || action === 'mute') {
-        endpoint = `/api/admin/${action}`;
-        body.duration = duration;
-      } else if (action === 'warn') {
-        endpoint = '/api/admin/warn';
-      } else if (action === 'kick') {
-        // Kick se fait via Socket.IO (voir plus bas)
-        setMessage('⚠️ Utilisez la commande :kick pour expulser');
-        setLoading(false);
-        return;
+      switch (action) {
+        case 'ban':
+          result = await adminService.banUser(targetUsername, duration, reason);
+          break;
+        case 'mute':
+          result = await adminService.muteUser(targetUsername, duration, reason);
+          break;
+        case 'warn':
+          result = await adminService.warnUser(targetUsername, reason);
+          break;
+        case 'kick':
+          result = await adminService.kickUser(targetUsername, reason);
+          break;
       }
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL}${endpoint}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(body)
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        setMessage(`✅ ${data.message}`);
-        setTargetUsername('');
-        setReason('');
-      } else {
-        setMessage(`❌ ${data.error}`);
-      }
-    } catch (error) {
+      setMessage(`✅ ${result.message}`);
+      setTargetUsername('');
+      setReason('');
+    } catch (error: any) {
       console.error('Erreur modération:', error);
-      setMessage('❌ Erreur serveur');
+      setMessage(`❌ ${error.response?.data?.error || 'Erreur serveur'}`);
     } finally {
       setLoading(false);
     }
@@ -172,9 +158,16 @@ const ModerationTab: React.FC<{ userRole: string }> = ({ userRole }) => {
         <div className="form-group">
           <label>Durée:</label>
           <select value={duration} onChange={(e) => setDuration(e.target.value)}>
+            <option value="5m">5 minutes</option>
+            <option value="10m">10 minutes</option>
+            <option value="15m">15 minutes</option>
             <option value="30m">30 minutes</option>
             <option value="1h">1 heure</option>
+            <option value="3h">3 heures</option>
+            <option value="6h">6 heures</option>
+            <option value="12h">12 heures</option>
             <option value="24h">24 heures</option>
+            <option value="3d">3 jours</option>
             <option value="7d">7 jours</option>
             {(userRole === 'admin' || userRole === 'owner') && (
               <option value="permanent">Permanent</option>
@@ -220,23 +213,26 @@ const ModerationTab: React.FC<{ userRole: string }> = ({ userRole }) => {
 
 const BadgesTab: React.FC<{ userRole: string }> = ({ userRole }) => {
   const [targetUsername, setTargetUsername] = useState('');
-  const [badgeCode, setBadgeCode] = useState('vip_2024');
+  const [badgeKey, setBadgeKey] = useState('vip_2024');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
-  const [badges, setBadges] = useState<any[]>([]);
+  const [badges, setBadges] = useState<Badge[]>([]);
+  const [loadingBadges, setLoadingBadges] = useState(true);
 
   useEffect(() => {
-    // Tu peux charger la liste des badges depuis l'API
-    // Pour l'instant, badges en dur
-    setBadges([
-      { code: 'vip_2024', name: 'VIP 2024', isAdminOnly: false },
-      { code: 'staff', name: 'Staff', isAdminOnly: true },
-      { code: 'moderator', name: 'Modérateur', isAdminOnly: true },
-      { code: 'founder', name: 'Fondateur', isAdminOnly: true },
-      { code: 'event_summer_2024', name: 'Été 2024', isAdminOnly: false },
-      { code: 'beta_tester', name: 'Beta Tester', isAdminOnly: false },
-    ]);
+    loadBadges();
   }, []);
+
+  const loadBadges = async () => {
+    try {
+      const allBadges = await adminService.getBadges();
+      setBadges(allBadges);
+    } catch (error) {
+      console.error('Erreur chargement badges:', error);
+    } finally {
+      setLoadingBadges(false);
+    }
+  };
 
   const handleGiveBadge = async () => {
     if (!targetUsername) {
@@ -248,28 +244,12 @@ const BadgesTab: React.FC<{ userRole: string }> = ({ userRole }) => {
     setMessage('');
 
     try {
-      const token = localStorage.getItem('token');
-      
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/badge/give`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ targetUsername, badgeCode })
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        setMessage(`✅ ${data.message}`);
-        setTargetUsername('');
-      } else {
-        setMessage(`❌ ${data.error}`);
-      }
-    } catch (error) {
+      const result = await adminService.giveBadge(targetUsername, badgeKey);
+      setMessage(`✅ ${result.message}`);
+      setTargetUsername('');
+    } catch (error: any) {
       console.error('Erreur badge:', error);
-      setMessage('❌ Erreur serveur');
+      setMessage(`❌ ${error.response?.data?.error || 'Erreur serveur'}`);
     } finally {
       setLoading(false);
     }
@@ -291,23 +271,23 @@ const BadgesTab: React.FC<{ userRole: string }> = ({ userRole }) => {
 
       <div className="form-group">
         <label>Badge:</label>
-        <select value={badgeCode} onChange={(e) => setBadgeCode(e.target.value)}>
-          {badges.map(badge => (
-            <option 
-              key={badge.code} 
-              value={badge.code}
-              disabled={badge.isAdminOnly && userRole !== 'admin' && userRole !== 'owner'}
-            >
-              {badge.name} {badge.isAdminOnly ? '(Admin)' : ''}
-            </option>
-          ))}
-        </select>
+        {loadingBadges ? (
+          <div>Chargement des badges...</div>
+        ) : (
+          <select value={badgeKey} onChange={(e) => setBadgeKey(e.target.value)}>
+            {badges.map((badge) => (
+              <option key={badge.key} value={badge.key}>
+                {badge.icon} {badge.name} {badge.isAdminOnly ? '(Admin)' : ''}
+              </option>
+            ))}
+          </select>
+        )}
       </div>
 
       <button 
         className="submit-btn"
         onClick={handleGiveBadge}
-        disabled={loading}
+        disabled={loading || loadingBadges}
       >
         {loading ? 'Traitement...' : 'Donner le badge'}
       </button>
@@ -315,11 +295,15 @@ const BadgesTab: React.FC<{ userRole: string }> = ({ userRole }) => {
       {message && <div className="message">{message}</div>}
 
       <div className="info-box">
-        <h4>ℹ️ Permissions:</h4>
-        <ul>
-          <li><strong>Community Manager:</strong> Badges événements uniquement</li>
-          <li><strong>Admin/Owner:</strong> Tous les badges</li>
-        </ul>
+        <h4>📋 Badges disponibles:</h4>
+        <div className="badges-grid">
+          {badges.slice(0, 6).map((badge) => (
+            <div key={badge.key} className="badge-preview">
+              <span className="badge-icon">{badge.icon}</span>
+              <span className="badge-name">{badge.name}</span>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -330,9 +314,9 @@ const BadgesTab: React.FC<{ userRole: string }> = ({ userRole }) => {
 // ==================
 
 const EconomyTab: React.FC<{ userRole: string }> = ({ userRole }) => {
+  const [currency, setCurrency] = useState<'coins' | 'gems'>('coins');
   const [targetUsername, setTargetUsername] = useState('');
   const [amount, setAmount] = useState('1000');
-  const [currency, setCurrency] = useState<'coins' | 'nuggets'>('coins');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
 
@@ -352,30 +336,20 @@ const EconomyTab: React.FC<{ userRole: string }> = ({ userRole }) => {
     setMessage('');
 
     try {
-      const token = localStorage.getItem('token');
-      const endpoint = currency === 'coins' ? '/api/admin/coins/give' : '/api/admin/nuggets/give';
+      let result;
       
-      const response = await fetch(`${import.meta.env.VITE_API_URL}${endpoint}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ targetUsername, amount: amountNum })
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        setMessage(`✅ ${data.message}`);
-        setTargetUsername('');
-        setAmount('1000');
+      if (currency === 'coins') {
+        result = await adminService.giveCoins(targetUsername, amountNum);
       } else {
-        setMessage(`❌ ${data.error}`);
+        result = await adminService.giveGems(targetUsername, amountNum);
       }
-    } catch (error) {
+
+      setMessage(`✅ ${result.message}`);
+      setTargetUsername('');
+      setAmount('1000');
+    } catch (error: any) {
       console.error('Erreur économie:', error);
-      setMessage('❌ Erreur serveur');
+      setMessage(`❌ ${error.response?.data?.error || 'Erreur serveur'}`);
     } finally {
       setLoading(false);
     }
@@ -405,8 +379,8 @@ const EconomyTab: React.FC<{ userRole: string }> = ({ userRole }) => {
             💰 uCoins
           </button>
           <button 
-            className={currency === 'nuggets' ? 'active' : ''}
-            onClick={() => setCurrency('nuggets')}
+            className={currency === 'gems' ? 'active' : ''}
+            onClick={() => setCurrency('gems')}
           >
             💎 uNuggets
           </button>
@@ -442,30 +416,15 @@ const EconomyTab: React.FC<{ userRole: string }> = ({ userRole }) => {
 // ==================
 
 const LogsTab: React.FC<{ userRole: string }> = ({ userRole }) => {
-  const [logs, setLogs] = useState<any[]>([]);
+  const [logs, setLogs] = useState<AdminLog[]>([]);
   const [loading, setLoading] = useState(false);
-  const [filter, setFilter] = useState('all');
 
   const loadLogs = async () => {
     setLoading(true);
     
     try {
-      const token = localStorage.getItem('token');
-      const url = filter === 'all' 
-        ? `${import.meta.env.VITE_API_URL}/api/admin/logs`
-        : `${import.meta.env.VITE_API_URL}/api/admin/logs?action=${filter}`;
-      
-      const response = await fetch(url, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        setLogs(data);
-      }
+      const data = await adminService.getLogs(50);
+      setLogs(data);
     } catch (error) {
       console.error('Erreur logs:', error);
     } finally {
@@ -475,21 +434,13 @@ const LogsTab: React.FC<{ userRole: string }> = ({ userRole }) => {
 
   useEffect(() => {
     loadLogs();
-  }, [filter]);
+  }, []);
 
   return (
     <div className="logs-tab">
       <h3>Historique des actions</h3>
       
       <div className="filter-bar">
-        <select value={filter} onChange={(e) => setFilter(e.target.value)}>
-          <option value="all">Toutes les actions</option>
-          <option value="ban">Bans</option>
-          <option value="mute">Mutes</option>
-          <option value="warn">Warns</option>
-          <option value="give_badge">Badges donnés</option>
-          <option value="give_coins">Coins donnés</option>
-        </select>
         <button onClick={loadLogs}>🔄 Actualiser</button>
       </div>
 
@@ -528,26 +479,15 @@ const LogsTab: React.FC<{ userRole: string }> = ({ userRole }) => {
 // ==================
 
 const StatsTab: React.FC<{ userRole: string }> = ({ userRole }) => {
-  const [stats, setStats] = useState<any>(null);
+  const [stats, setStats] = useState<AdminStats | null>(null);
   const [loading, setLoading] = useState(false);
 
   const loadStats = async () => {
     setLoading(true);
     
     try {
-      const token = localStorage.getItem('token');
-      
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/stats`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        setStats(data);
-      }
+      const data = await adminService.getStats();
+      setStats(data);
     } catch (error) {
       console.error('Erreur stats:', error);
     } finally {
@@ -575,6 +515,12 @@ const StatsTab: React.FC<{ userRole: string }> = ({ userRole }) => {
         </div>
         
         <div className="stat-card">
+          <div className="stat-icon">🟢</div>
+          <div className="stat-value">{stats.onlineUsers}</div>
+          <div className="stat-label">En ligne</div>
+        </div>
+        
+        <div className="stat-card">
           <div className="stat-icon">🚫</div>
           <div className="stat-value">{stats.bannedUsers}</div>
           <div className="stat-label">Bannis</div>
@@ -595,13 +541,7 @@ const StatsTab: React.FC<{ userRole: string }> = ({ userRole }) => {
         <div className="stat-card">
           <div className="stat-icon">🏛️</div>
           <div className="stat-value">{stats.totalRooms}</div>
-          <div className="stat-label">Salles totales</div>
-        </div>
-        
-        <div className="stat-card">
-          <div className="stat-icon">🌐</div>
-          <div className="stat-value">{stats.publicRooms}</div>
-          <div className="stat-label">Salles publiques</div>
+          <div className="stat-label">Salles</div>
         </div>
       </div>
 

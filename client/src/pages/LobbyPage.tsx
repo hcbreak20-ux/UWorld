@@ -215,6 +215,16 @@ export const LobbyPage: React.FC = () => {
         <div className="header-left">
           <img src="/uworld-logo.png" alt="UWorld" className="header-logo" />
           <h1>UWorld</h1>
+          
+          {/* ✅ NOUVEAU: Bouton Admin à côté du logo */}
+          {(userRole === 'moderator' || userRole === 'admin' || userRole === 'owner') && (
+            <button 
+              className="admin-button-left"
+              onClick={() => setShowAdminPanel(true)}
+            >
+              👑 Admin
+            </button>
+          )}
         </div>
 
         <div className="header-actions">
@@ -240,16 +250,6 @@ export const LobbyPage: React.FC = () => {
               <span className="unread-badge">{unreadCount > 99 ? '99+' : unreadCount}</span>
             )}
           </button>
-
-          {/* ✅ NOUVEAU: Bouton Admin */}
-          {(userRole === 'moderator' || userRole === 'admin' || userRole === 'owner') && (
-            <button 
-              className="admin-button"
-              onClick={() => setShowAdminPanel(true)}
-            >
-              👑 Admin
-            </button>
-          )}
           
           <button onClick={handleLogout}>🚪 Déconnexion</button>
         </div>
