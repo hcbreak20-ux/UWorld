@@ -97,6 +97,7 @@ model Room {
   id          String   @id @default(uuid())
   name        String
   description String   @default("")
+  isPrivate   Boolean  @dafault(false)
   ownerId     String
   isPublic    Boolean  @default(true)
   maxUsers    Int      @default(25)
@@ -287,6 +288,7 @@ model AdminLog {
   adminId      String
   targetUserId String
   reason       String
+  details      json?
   duration     Int?
   createdAt    DateTime  @default(now())
 
