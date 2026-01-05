@@ -64,7 +64,7 @@ export const initializeSocket = (server: HTTPServer) => {
       socket.userId = payload.userId;
       socket.username = payload.username;
 
-      // ✅ NOUVEAU: Charger les infos complètes de l'utilisateur pour admin
+      // Charger les infos complètes de l'utilisateur
       const user = await prisma.user.findUnique({
         where: { id: payload.userId },
         select: {
@@ -73,7 +73,11 @@ export const initializeSocket = (server: HTTPServer) => {
           email: true,
           role: true,
           isBanned: true,
+          banExpiresAt: true,
+          banReason: true,
           isMuted: true,
+          muteExpiresAt: true,
+          muteReason: true,
           isInvisible: true,
         },
       });
@@ -82,14 +86,27 @@ export const initializeSocket = (server: HTTPServer) => {
         return next(new Error('Utilisateur introuvable'));
       }
 
+      // Vérifier si ban expiré
+      if (user.isBanned && user.banExpiresAt && user.banExpiresAt < new Date()) {
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { 
+            isBanned: false, 
+            banExpiresAt: null, 
+            banReason: null 
+          }
+        });
+        user.isBanned = false;
+      }
+
       // Vérifier si banni
       if (user.isBanned) {
         return next(new Error('Vous êtes banni'));
       }
 
-      // ✅ NOUVEAU: Stocker les infos complètes dans socket.data
+      // Stocker les infos complètes dans socket.data
       socket.data.user = user;
-      socket.data.position = { x: 5, y: 5 }; // Position par défaut
+      socket.data.position = { x: 5, y: 5 };
 
       next();
     } catch (error) {
@@ -100,15 +117,15 @@ export const initializeSocket = (server: HTTPServer) => {
   io.on('connection', async (socket: UserSocket) => {
     console.log(`Utilisateur connecté: ${socket.username} (${socket.userId})`);
 
-    // ✅ NOUVEAU: Enregistrer le socket pour les commandes admin
+    // Enregistrer le socket pour les commandes admin
     if (socket.userId) {
       registerUserSocket(socket.userId, socket);
     }
 
-    // ✅ NOUVEAU: Setup des événements admin
+    // Setup des événements admin
     setupAdminEvents(io, socket);
 
-    // ✅ NOUVEAU: Tracker le temps en ligne toutes les minutes
+    // Tracker le temps en ligne toutes les minutes
     const timeTrackingInterval = setInterval(async () => {
       if (socket.userId && socket.connected) {
         await questService.trackTimeOnline(socket.userId, 1);
@@ -120,7 +137,7 @@ export const initializeSocket = (server: HTTPServer) => {
       clearInterval(timeTrackingInterval);
       console.log(`Utilisateur déconnecté: ${socket.username}`);
 
-      // ✅ NOUVEAU: Désenregistrer le socket
+      // Désenregistrer le socket
       if (socket.userId) {
         unregisterUserSocket(socket.userId);
       }
@@ -170,7 +187,7 @@ export const initializeSocket = (server: HTTPServer) => {
         socket.join(roomId);
         socket.currentRoom = roomId;
 
-        // ✅ NOUVEAU: Stocker le roomId dans socket.data pour admin
+        // Stocker le roomId dans socket.data pour admin
         socket.data.roomId = roomId;
 
         // Récupérer les infos du joueur
@@ -206,7 +223,7 @@ export const initializeSocket = (server: HTTPServer) => {
           avatarPantsColor: user.avatarPantsColor,
         };
 
-        // ✅ NOUVEAU: Mettre à jour la position dans socket.data
+        // Mettre à jour la position dans socket.data
         socket.data.position = roomPlayers[roomId][user.id].position;
 
         // Envoyer les joueurs existants au nouveau joueur
@@ -249,7 +266,7 @@ export const initializeSocket = (server: HTTPServer) => {
       if (roomPlayers[socket.currentRoom] && roomPlayers[socket.currentRoom][socket.userId]) {
         roomPlayers[socket.currentRoom][socket.userId].position = position;
 
-        // ✅ NOUVEAU: Mettre à jour aussi dans socket.data pour admin
+        // Mettre à jour aussi dans socket.data pour admin
         socket.data.position = position;
 
         // Diffuser aux autres joueurs
@@ -275,119 +292,52 @@ export const initializeSocket = (server: HTTPServer) => {
         const { message, type = 'normal', whisperTarget } = data;
 
         // Valider le message
-        if (!message || message.trim().length === 0 || message.length > 500) {
+        if (!message || message.trim().length === 0) {
           return;
         }
 
-// Dans le handler "chat_message" ou "send_message"
-socket.on('chat_message', async (data: { message: string }) => {
-  try {
-    const userId = socket.userId;
-    
-    // ✅ NOUVEAU: Vérifier si l'utilisateur est mute
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { 
-        isMuted: true, 
-        muteExpiresAt: true,
-        muteReason: true,
-        isBanned: true  // Vérifier ban aussi
-      }
-    });
-    
-    if (!user) return;
-    
-    // ✅ Vérifier si banni
-    if (user.isBanned) {
-      socket.emit('error', { message: 'Vous êtes banni' });
-      socket.disconnect(true);
-      return;
-    }
-    
-    // ✅ Vérifier si mute expiré
-    if (user.isMuted && user.muteExpiresAt && user.muteExpiresAt < new Date()) {
-      await prisma.user.update({
-        where: { id: userId },
-        data: { 
-          isMuted: false, 
-          muteExpiresAt: null, 
-          muteReason: null 
+        if (message.length > 500) {
+          socket.emit('error', { message: 'Message trop long (max 500 caractères)' });
+          return;
         }
-      });
-      user.isMuted = false;
-    }
-    
-    // ✅ Bloquer si mute
-    if (user.isMuted) {
-      socket.emit('error', { 
-        message: `Vous êtes mute. Raison: ${user.muteReason || 'Non spécifiée'}`,
-        type: 'muted'
-      });
-      return;
-    }
-    
-    // Continuer avec le message normal...
-    const { message } = data;
-    // ... reste du code
-    
-  } catch (error) {
-    console.error('Erreur chat_message:', error);
-  }
-});// Dans le handler "chat_message" ou "send_message"
-socket.on('chat_message', async (data: { message: string }) => {
-  try {
-    const userId = socket.userId;
-    
-    // ✅ NOUVEAU: Vérifier si l'utilisateur est mute
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { 
-        isMuted: true, 
-        muteExpiresAt: true,
-        muteReason: true,
-        isBanned: true  // Vérifier ban aussi
-      }
-    });
-    
-    if (!user) return;
-    
-    // ✅ Vérifier si banni
-    if (user.isBanned) {
-      socket.emit('error', { message: 'Vous êtes banni' });
-      socket.disconnect(true);
-      return;
-    }
-    
-    // ✅ Vérifier si mute expiré
-    if (user.isMuted && user.muteExpiresAt && user.muteExpiresAt < new Date()) {
-      await prisma.user.update({
-        where: { id: userId },
-        data: { 
-          isMuted: false, 
-          muteExpiresAt: null, 
-          muteReason: null 
+
+        // Vérifier si l'utilisateur est mute
+        const user = await prisma.user.findUnique({
+          where: { id: socket.userId },
+          select: { 
+            isMuted: true, 
+            muteExpiresAt: true,
+            muteReason: true,
+            isBanned: true
+          }
+        });
+        
+        if (!user) return;
+        
+        // Vérifier si banni
+        if (user.isBanned) {
+          socket.emit('error', { message: 'Vous êtes banni' });
+          socket.disconnect(true);
+          return;
         }
-      });
-      user.isMuted = false;
-    }
-    
-    // ✅ Bloquer si mute
-    if (user.isMuted) {
-      socket.emit('error', { 
-        message: `Vous êtes mute. Raison: ${user.muteReason || 'Non spécifiée'}`,
-        type: 'muted'
-      });
-      return;
-    }
-    
-    // Continuer avec le message normal...
-    const { message } = data;
-    // ... reste du code
-    
-  } catch (error) {
-    console.error('Erreur chat_message:', error);
-  }
-});
+        
+        // Vérifier expiration mute
+        if (user.isMuted && user.muteExpiresAt && user.muteExpiresAt < new Date()) {
+          await prisma.user.update({
+            where: { id: socket.userId },
+            data: { isMuted: false, muteExpiresAt: null, muteReason: null }
+          });
+          user.isMuted = false;
+        }
+        
+        // Bloquer si mute
+        if (user.isMuted) {
+          socket.emit('error', { 
+            message: `Vous êtes mute. Raison: ${user.muteReason || 'Non spécifiée'}`,
+            type: 'muted'
+          });
+          return;
+        }
 
         // Sauvegarder dans la base de données
         const savedMessage = await prisma.message.create({
@@ -409,7 +359,7 @@ socket.on('chat_message', async (data: { message: string }) => {
           },
         });
 
-        // Diffuser à tous les joueurs dans la salle (incluant l'expéditeur)
+        // Diffuser à tous les joueurs dans la salle
         io.to(socket.currentRoom).emit('chat_message', {
           id: savedMessage.id,
           content: savedMessage.content,
@@ -446,7 +396,7 @@ socket.on('chat_message', async (data: { message: string }) => {
           return;
         }
 
-        // ✅ NOUVEAU: Vérifier si mute
+        // Vérifier si mute
         if (socket.data.user?.isMuted) {
           socket.emit('error', { message: 'Vous êtes muté et ne pouvez pas chuchoter' });
           return;
@@ -456,47 +406,6 @@ socket.on('chat_message', async (data: { message: string }) => {
         const targetSocket = Array.from(io.sockets.sockets.values()).find(
           (s: any) => s.userId === targetUserId
         );
-        
-        // Dans le handler de connexion Socket.IO
-io.on('connection', async (socket) => {
-  // ... authentification existante
-  
-  const userId = socket.userId;
-  
-  // ✅ NOUVEAU: Vérifier si banni
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { 
-      isBanned: true, 
-      banExpiresAt: true,
-      banReason: true
-    }
-  });
-  
-  if (user?.isBanned) {
-    // Vérifier si ban expiré
-    if (user.banExpiresAt && user.banExpiresAt < new Date()) {
-      await prisma.user.update({
-        where: { id: userId },
-        data: { 
-          isBanned: false, 
-          banExpiresAt: null, 
-          banReason: null 
-        }
-      });
-    } else {
-      // Ban toujours actif - déconnecter
-      socket.emit('banned', { 
-        reason: user.banReason,
-        expiresAt: user.banExpiresAt
-      });
-      socket.disconnect(true);
-      return;
-    }
-  }
-  
-  // Continuer connexion normale...
-});
 
         if (!targetSocket) {
           socket.emit('error', { message: 'Utilisateur non trouvé ou hors ligne' });
@@ -525,6 +434,57 @@ io.on('connection', async (socket) => {
         });
       } catch (error) {
         console.error('Erreur whisper:', error);
+      }
+    });
+
+    // Message privé
+    socket.on('private_message', async (data: { receiverId: string; content: string }) => {
+      try {
+        const userId = socket.userId;
+        if (!userId) return;
+        
+        // Vérifier si l'utilisateur est mute
+        const user = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { 
+            isMuted: true, 
+            muteExpiresAt: true,
+            muteReason: true,
+            isBanned: true
+          }
+        });
+        
+        if (!user) return;
+        
+        if (user.isBanned) {
+          socket.emit('error', { message: 'Vous êtes banni' });
+          socket.disconnect(true);
+          return;
+        }
+        
+        // Vérifier expiration mute
+        if (user.isMuted && user.muteExpiresAt && user.muteExpiresAt < new Date()) {
+          await prisma.user.update({
+            where: { id: userId },
+            data: { isMuted: false, muteExpiresAt: null, muteReason: null }
+          });
+          user.isMuted = false;
+        }
+        
+        // Bloquer si mute
+        if (user.isMuted) {
+          socket.emit('error', { 
+            message: `Vous êtes mute et ne pouvez pas envoyer de MP. Raison: ${user.muteReason || 'Non spécifiée'}`,
+            type: 'muted'
+          });
+          return;
+        }
+        
+        // Message privé normal (le code existant pour créer le PM)
+        // ... votre logique existante pour sauvegarder et envoyer le PM
+        
+      } catch (error) {
+        console.error('Erreur private_message:', error);
       }
     });
 
@@ -586,64 +546,10 @@ io.on('connection', async (socket) => {
 
   setSocketIO(io);
 
-  // ✅ NOUVEAU: Vérifier les bans/mutes expirés toutes les minutes
+  // Vérifier les bans/mutes expirés toutes les minutes
   setInterval(() => {
     checkExpiredSanctions();
   }, 60 * 1000);
 
   return io;
 };
-
-//
-//
-//
-//
-// Dans le handler "private_message"
-socket.on('private_message', async (data: { receiverId: string; content: string }) => {
-  try {
-    const userId = socket.userId;
-    
-    // ✅ NOUVEAU: Vérifier si l'utilisateur est mute
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { 
-        isMuted: true, 
-        muteExpiresAt: true,
-        muteReason: true,
-        isBanned: true
-      }
-    });
-    
-    if (!user) return;
-    
-    if (user.isBanned) {
-      socket.emit('error', { message: 'Vous êtes banni' });
-      socket.disconnect(true);
-      return;
-    }
-    
-    // Vérifier expiration mute
-    if (user.isMuted && user.muteExpiresAt && user.muteExpiresAt < new Date()) {
-      await prisma.user.update({
-        where: { id: userId },
-        data: { isMuted: false, muteExpiresAt: null, muteReason: null }
-      });
-      user.isMuted = false;
-    }
-    
-    // Bloquer si mute
-    if (user.isMuted) {
-      socket.emit('error', { 
-        message: `Vous êtes mute et ne pouvez pas envoyer de MP. Raison: ${user.muteReason || 'Non spécifiée'}`,
-        type: 'muted'
-      });
-      return;
-    }
-    
-    // Continuer avec le MP normal...
-    // ... reste du code
-    
-  } catch (error) {
-    console.error('Erreur private_message:', error);
-  }
-});
