@@ -23,9 +23,19 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    // Déconnecter SEULEMENT sur 401 des routes auth
     if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      window.location.href = '/login';
+      const url = error.config?.url || '';
+      
+      // Si c'est /auth/me ou /auth/login → déconnexion
+      if (url.includes('/auth/')) {
+        console.log('🚪 Déconnexion: Token invalide');
+        localStorage.removeItem('token');
+        window.location.href = '/login';
+      } else {
+        // Routes admin, etc. → juste log l'erreur
+        console.error('❌ Accès refusé:', url);
+      }
     }
     return Promise.reject(error);
   }
@@ -60,7 +70,7 @@ export const roomAPI = {
   },
   
   getRoomById: async (id: string): Promise<Room> => {
-    const response = await api.get(`/rooms/${id}`);  // ✅ CORRIGÉ
+    const response = await api.get(`/rooms/${id}`);
     return response.data;
   },
   
@@ -75,12 +85,12 @@ export const roomAPI = {
   },
   
   updateRoom: async (id: string, data: Partial<Room>): Promise<Room> => {
-    const response = await api.put(`/rooms/${id}`, data);  // ✅ CORRIGÉ
+    const response = await api.put(`/rooms/${id}`, data);
     return response.data;
   },
   
   deleteRoom: async (id: string): Promise<void> => {
-    await api.delete(`/rooms/${id}`);  // ✅ CORRIGÉ
+    await api.delete(`/rooms/${id}`);
   },
 };
 
