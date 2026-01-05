@@ -43,19 +43,24 @@ export function findUserIdBySocket(socket: Socket): string | undefined {
   return undefined;
 }
 
+// Helper pour vérifier si un utilisateur est staff
+function isStaff(role: string): boolean {
+  return ['moderator', 'admin', 'owner'].includes(role);
+}
+
 /**
  * Configuration des événements admin Socket.IO
  */
 export function setupAdminEvents(io: Server, socket: Socket) {
   
   // ==================
-  // KICK
+  // KICK - VERSION CORRIGÉE
   // ==================
   
   socket.on('admin:kick', async (data: { targetUsername: string; reason: string }) => {
     const admin = socket.data.user;
     
-    if (!admin || !hasPermission(admin.role as UserRole, 'kick')) {
+    if (!admin || !isStaff(admin.role)) {
       return socket.emit('admin:error', { message: 'Permission refusée' });
     }
     
@@ -76,36 +81,37 @@ export function setupAdminEvents(io: Server, socket: Socket) {
         });
       }
       
+      // Créer un log AVANT le kick
+      await prisma.adminLog.create({
+        data: {
+          adminId: admin.id,
+          targetUserId: target.id,
+          action: 'KICK',
+          reason: data.reason
+        }
+      });
+      
       // Trouver le socket du joueur
       const targetSocket = findSocketByUserId(target.id);
       
       if (targetSocket) {
         // Envoyer notification de kick
-        targetSocket.emit('kicked', {
+        targetSocket.emit('moderation:kicked', {
           reason: data.reason,
-          by: admin.username,
-          timestamp: new Date()
+          moderator: admin.username,
         });
         
-        // Déconnecter après 2 secondes
+        // Déconnecter après 1 seconde
         setTimeout(() => {
           targetSocket.disconnect(true);
-        }, 2000);
+        }, 1000);
       }
-      
-      // Logger
-      await prisma.adminLog.create({
-        data: {
-          adminId: admin.id,
-          targetUserId: target.id,
-          action: 'kick',
-          reason: data.reason
-        }
-      });
       
       socket.emit('admin:success', { 
         message: `${data.targetUsername} a été expulsé` 
       });
+      
+      console.log(`[MODERATION] ${admin.username} a kick ${data.targetUsername}: ${data.reason}`);
       
     } catch (error) {
       console.error('Erreur kick:', error);
@@ -331,10 +337,9 @@ export function setupAdminEvents(io: Server, socket: Socket) {
       await prisma.adminLog.create({
         data: {
           adminId: admin.id,
-          action: 'announce',
-          details: {
-            message: data.message
-          }
+          targetUserId: admin.id, // Pas de cible pour une annonce
+          action: 'ANNOUNCE',
+          reason: data.message
         }
       });
       
