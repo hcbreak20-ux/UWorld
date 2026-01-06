@@ -470,8 +470,11 @@ const LogsTab: React.FC<{ userRole: string }> = ({ userRole }) => {
     loadLogs();
   }, []);
 
-  const handleDeleteLog = async (logId: string) => {
-    if (!confirm('Supprimer ce log?')) return;
+const handleDeleteLog = async (logId: string) => {
+  console.log('🔍 handleDeleteLog appelée! logId:', logId);
+  console.log('🔍 Avant confirm()');
+  if (!confirm('Supprimer ce log?')) return;
+  console.log('🔍 Après confirm() - utilisateur a cliqué OK');
 
     try {
       // Appel API pour supprimer un log
@@ -483,13 +486,18 @@ const LogsTab: React.FC<{ userRole: string }> = ({ userRole }) => {
     }
   };
 
-  const handleDeleteSelected = async () => {
-    if (selectedLogs.size === 0) {
-      alert('Aucun log sélectionné');
-      return;
-    }
+const handleDeleteSelected = async () => {
+  console.log('🔍 handleDeleteSelected appelée! selectedLogs:', selectedLogs);
+  console.log('🔍 selectedLogs.size:', selectedLogs.size);
+  
+  if (selectedLogs.size === 0) {
+    alert('Aucun log sélectionné');
+    return;
+  }
 
-    if (!confirm(`Supprimer ${selectedLogs.size} log(s)?`)) return;
+  console.log('🔍 Avant confirm()');
+  if (!confirm(`Supprimer ${selectedLogs.size} log(s)?`)) return;
+  console.log('🔍 Après confirm() - utilisateur a cliqué OK');
 
     try {
       // Appel API pour supprimer plusieurs logs
@@ -565,7 +573,10 @@ const LogsTab: React.FC<{ userRole: string }> = ({ userRole }) => {
 
           {/* Bouton Supprimer la sélection */}
           <button 
-            onClick={handleDeleteSelected}
+            onClick={() => {
+            console.log('🔍 BOUTON CLIQUÉ! selectedLogs.size:', selectedLogs.size);
+            handleDeleteSelected();
+            }}
             disabled={selectedLogs.size === 0}
             style={{
               backgroundColor: selectedLogs.size > 0 ? '#ff6b6b' : '#555',
