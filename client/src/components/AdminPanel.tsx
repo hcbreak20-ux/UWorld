@@ -457,7 +457,7 @@ const LogsTab: React.FC<{ userRole: string }> = ({ userRole }) => {
     setLoading(true);
     
     try {
-      const data = await adminService.getLogs(100); // Augmenté à 100
+      const data = await adminService.getLogs(100);
       setLogs(data);
     } catch (error) {
       console.error('Erreur logs:', error);
@@ -470,43 +470,47 @@ const LogsTab: React.FC<{ userRole: string }> = ({ userRole }) => {
     loadLogs();
   }, []);
 
-const handleDeleteLog = async (logId: string) => {
-  console.log('🔍 handleDeleteLog appelée! logId:', logId);
-  console.log('🔍 Avant confirm()');
-  if (!confirm('Supprimer ce log?')) return;
-  console.log('🔍 Après confirm() - utilisateur a cliqué OK');
+  // ✅ Supprimer UN log (SANS confirm)
+  const handleDeleteLog = async (logId: string) => {
+    console.log('🔍 handleDeleteLog appelée! logId:', logId);
 
     try {
-      // Appel API pour supprimer un log
+      console.log('🔍 Appel adminService.deleteLog...');
       await adminService.deleteLog(logId);
+      console.log('✅ Suppression réussie côté API!');
+      
       setLogs(logs.filter((log) => log.id !== logId));
+      console.log('✅ État mis à jour!');
     } catch (error) {
-      console.error('Erreur suppression log:', error);
+      console.error('❌ Erreur suppression log:', error);
       alert('Erreur lors de la suppression');
     }
   };
 
-const handleDeleteSelected = async () => {
-  console.log('🔍 handleDeleteSelected appelée! selectedLogs:', selectedLogs);
-  console.log('🔍 selectedLogs.size:', selectedLogs.size);
-  
-  if (selectedLogs.size === 0) {
-    alert('Aucun log sélectionné');
-    return;
-  }
+  // ✅ Supprimer PLUSIEURS logs (SANS confirm)
+  const handleDeleteSelected = async () => {
+    console.log('🔍 handleDeleteSelected appelée! selectedLogs:', selectedLogs);
+    console.log('🔍 selectedLogs.size:', selectedLogs.size);
+    
+    if (selectedLogs.size === 0) {
+      alert('Aucun log sélectionné');
+      return;
+    }
 
-  console.log('🔍 Avant confirm()');
-  if (!confirm(`Supprimer ${selectedLogs.size} log(s)?`)) return;
-  console.log('🔍 Après confirm() - utilisateur a cliqué OK');
+    console.log('🔍 Suppression directe...');
 
     try {
-      // Appel API pour supprimer plusieurs logs
+      console.log('🔍 Appel adminService.deleteLogs...');
       await adminService.deleteLogs(Array.from(selectedLogs));
+      console.log('✅ Suppression réussie côté API!');
+      
       setLogs(logs.filter((log) => !selectedLogs.has(log.id)));
       setSelectedLogs(new Set());
       setSelectAll(false);
+      
+      console.log('✅ État mis à jour!');
     } catch (error) {
-      console.error('Erreur suppression logs:', error);
+      console.error('❌ Erreur suppression logs:', error);
       alert('Erreur lors de la suppression');
     }
   };
@@ -528,6 +532,7 @@ const handleDeleteSelected = async () => {
       newSelected.add(logId);
     }
     setSelectedLogs(newSelected);
+    console.log('🔍 toggleLogSelection - newSelected.size:', newSelected.size);
   };
 
   const getActionColor = (action: string) => {
@@ -574,8 +579,8 @@ const handleDeleteSelected = async () => {
           {/* Bouton Supprimer la sélection */}
           <button 
             onClick={() => {
-            console.log('🔍 BOUTON CLIQUÉ! selectedLogs.size:', selectedLogs.size);
-            handleDeleteSelected();
+              console.log('🔍 BOUTON CLIQUÉ! selectedLogs.size:', selectedLogs.size);
+              handleDeleteSelected();
             }}
             disabled={selectedLogs.size === 0}
             style={{
@@ -661,10 +666,21 @@ const handleDeleteSelected = async () => {
                     cursor: 'pointer',
                     fontSize: '18px',
                     fontWeight: 'bold',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transition: 'all 0.2s',
                   }}
-                  title="Supprimer ce log"
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.backgroundColor = '#ff6b6b';
+                    e.currentTarget.style.color = '#fff';
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                    e.currentTarget.style.color = '#ff6b6b';
+                  }}
                 >
-                  ×
+                  ✕
                 </button>
               </div>
             ))
