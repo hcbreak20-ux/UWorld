@@ -91,21 +91,29 @@ router.post('/ban', requirePermission('ban_temporary'), async (req, res) => {
       }
     });
     
-    // ✅ NOUVEAU: Déconnecter le joueur via Socket.IO
-    if (io) {
-      const sockets = await io.fetchSockets();
-      const targetSocket = sockets.find((s: any) => s.userId === target.id);
-      
-      if (targetSocket) {
-        targetSocket.emit('banned', {
-          reason,
-          duration,
-          expiresAt: banExpiresAt
-        });
-        targetSocket.disconnect(true);
-        console.log(`🚫 ${targetUsername} banni et déconnecté`);
-      }
-    }
+// ✅ NOUVEAU: Déconnecter le joueur via Socket.IO
+if (io) {
+  const sockets = await io.fetchSockets();
+  const targetSocket = sockets.find((s: any) => s.userId === target.id);
+  
+  if (targetSocket) {
+    // Envoyer notification de ban
+    targetSocket.emit('banned', {
+      reason,
+      duration,
+      expiresAt: banExpiresAt,
+      message: `Vous avez été banni. Raison: ${reason}`
+    });
+    
+    // Déconnecter IMMÉDIATEMENT (sans délai)
+    setTimeout(() => {
+      targetSocket.disconnect(true);
+      console.log(`🚫 ${targetUsername} banni et déconnecté`);
+    }, 500); // 500ms pour recevoir le message
+  } else {
+    console.log(`⚠️ ${targetUsername} n'est pas connecté`);
+  }
+}
     
     res.json({ 
       success: true,

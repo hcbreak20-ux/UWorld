@@ -67,9 +67,9 @@ router.post('/login', loginValidation, async (req: Request, res: Response): Prom
         });
       } else {
         // Ban toujours actif
-        const banMessage = user.banExpiresAt 
-          ? `Vous êtes banni jusqu'au ${user.banExpiresAt.toLocaleString('fr-FR')}. Raison: ${user.banReason || 'Non spécifiée'}`
-          : `Vous êtes banni définitivement. Raison: ${user.banReason || 'Non spécifiée'}`;
+     const banMessage = user.banExpiresAt 
+  ? `Vous êtes banni jusqu'au ${user.banExpiresAt.toLocaleString('fr-CA', { timeZone: 'America/Toronto' })}. Raison: ${user.banReason || 'Non spécifiée'}`
+  : `Vous êtes banni définitivement. Raison: ${user.banReason || 'Non spécifiée'}`;
         
         res.status(403).json({ error: banMessage });
         return;
