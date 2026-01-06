@@ -1,26 +1,33 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useStore } from '@/store';
 import { socketService } from '@/services/socket';
-import { executeAdminCommand } from '@/utils/adminCommands'; // ✅ NOUVEAU
+import { executeAdminCommand } from '@/utils/adminCommands';
 import './ChatInput.css';
 
 type ChatMode = 'normal' | 'shout' | 'whisper';
 
-const EMOJIS = ['😀', '😂', '❤️', '👍', '🎉', '🔥', '✨', '💯', '👋', '🎮'];
+const EMOJIS = ['😀', '😂', '❤️', '👍', '🎉', '🔥', '✨', '💯', '💋', '🎮'];
 
-// ✅ NOUVEAU: Props avec userRole
 interface ChatInputProps {
   userRole?: string;
 }
 
+interface Player {
+  userId: string;
+  username: string;
+}
+
 export const ChatInput: React.FC<ChatInputProps> = ({ userRole = 'user' }) => {
-  const { setChatInputFocused, players, user } = useStore();
+  const { setChatInputFocused, user } = useStore();
   const [inputMessage, setInputMessage] = useState('');
   const [chatMode, setChatMode] = useState<ChatMode>('normal');
   const [whisperTarget, setWhisperTarget] = useState<string>('');
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showModeDropdown, setShowModeDropdown] = useState(false);
-  const [commandResult, setCommandResult] = useState<string | null>(null); // ✅ NOUVEAU
+  const [commandResult, setCommandResult] = useState<string | null>(null);
+  
+  // ✅ NOUVEAU: State local pour les joueurs dans la salle
+  const [roomPlayers, setRoomPlayers] = useState<Player[]>([]);
   
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -28,7 +35,53 @@ export const ChatInput: React.FC<ChatInputProps> = ({ userRole = 'user' }) => {
     inputRef.current?.focus();
   }, []);
 
-  // ✅ NOUVEAU: Masquer le résultat de commande après 5 secondes
+  // ✅ NOUVEAU: Écouter les événements Socket.IO pour les joueurs
+  useEffect(() => {
+    const socket = socketService.getSocket();
+    if (!socket) return;
+
+    // Écouter les mises à jour de joueurs
+    const handlePlayersUpdate = (players: any) => {
+      console.log('🎮 Joueurs mis à jour:', players);
+      
+      // Convertir l'objet players en array
+      const playersArray: Player[] = Object.entries(players)
+        .filter(([userId]) => userId !== user?.id) // Exclure soi-même
+        .map(([userId, playerData]: [string, any]) => ({
+          userId,
+          username: playerData.username || playerData.name || 'Inconnu'
+        }));
+      
+      console.log('👥 Joueurs filtrés pour whisper:', playersArray);
+      setRoomPlayers(playersArray);
+    };
+
+    // Écouter plusieurs événements possibles
+    socket.on('players_update', handlePlayersUpdate);
+    socket.on('room_players', handlePlayersUpdate);
+    socket.on('player_joined', (data: any) => {
+      console.log('👋 Joueur rejoint:', data);
+      // Recharger la liste
+      socket.emit('get_room_players');
+    });
+    socket.on('player_left', (data: any) => {
+      console.log('👋 Joueur parti:', data);
+      // Recharger la liste
+      socket.emit('get_room_players');
+    });
+
+    // Demander la liste initiale des joueurs
+    console.log('🔍 Demande de la liste des joueurs...');
+    socket.emit('get_room_players');
+
+    return () => {
+      socket.off('players_update', handlePlayersUpdate);
+      socket.off('room_players', handlePlayersUpdate);
+      socket.off('player_joined');
+      socket.off('player_left');
+    };
+  }, [user?.id]);
+
   useEffect(() => {
     if (commandResult) {
       const timer = setTimeout(() => {
@@ -38,16 +91,12 @@ export const ChatInput: React.FC<ChatInputProps> = ({ userRole = 'user' }) => {
     }
   }, [commandResult]);
 
-  const otherPlayers = Object.entries(players)
-    .filter(([userId]) => userId !== user?.id)
-    .map(([userId, player]) => ({ userId, username: player.username }));
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!inputMessage.trim()) return;
 
-    // ✅ NOUVEAU: Vérifier si c'est une commande admin
+    // Vérifier si c'est une commande admin
     if (inputMessage.startsWith(':')) {
       const socket = socketService.getSocket();
       
@@ -62,8 +111,6 @@ export const ChatInput: React.FC<ChatInputProps> = ({ userRole = 'user' }) => {
         
         if (result) {
           setCommandResult(result);
-          
-          // Afficher aussi dans la console pour debug
           console.log('📋 Résultat commande:', result);
         }
       } catch (error) {
@@ -115,6 +162,13 @@ export const ChatInput: React.FC<ChatInputProps> = ({ userRole = 'user' }) => {
     setShowModeDropdown(false);
     if (mode !== 'whisper') {
       setWhisperTarget('');
+    } else {
+      // Recharger la liste des joueurs quand on passe en mode whisper
+      const socket = socketService.getSocket();
+      if (socket) {
+        console.log('🔄 Rechargement des joueurs pour whisper...');
+        socket.emit('get_room_players');
+      }
     }
     setTimeout(() => {
       inputRef.current?.focus();
@@ -123,7 +177,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ userRole = 'user' }) => {
 
   return (
     <div className="chat-input-container">
-      {/* ✅ NOUVEAU: Affichage du résultat de commande */}
+      {/* Affichage du résultat de commande */}
       {commandResult && (
         <div className={`command-result ${commandResult.startsWith('✅') ? 'success' : 'error'}`}>
           {commandResult}
@@ -203,13 +257,29 @@ export const ChatInput: React.FC<ChatInputProps> = ({ userRole = 'user' }) => {
           <select 
             value={whisperTarget} 
             onChange={(e) => setWhisperTarget(e.target.value)}
+            style={{
+              backgroundColor: '#1a1a2e',
+              color: '#ffffff',
+              border: '2px solid #6366f1',
+              borderRadius: '8px',
+              padding: '8px',
+              fontSize: '14px',
+            }}
           >
-            <option value="">-- Joueur --</option>
-            {otherPlayers.map(({ userId, username }) => (
-              <option key={userId} value={username}>
-                {username}
+            <option value="" style={{ backgroundColor: '#252541' }}>
+              -- Joueur ({roomPlayers.length} en ligne) --
+            </option>
+            {roomPlayers.length === 0 ? (
+              <option value="" disabled style={{ backgroundColor: '#252541' }}>
+                Aucun joueur disponible
               </option>
-            ))}
+            ) : (
+              roomPlayers.map(({ userId, username }) => (
+                <option key={userId} value={username} style={{ backgroundColor: '#252541' }}>
+                  {username}
+                </option>
+              ))
+            )}
           </select>
         </div>
       )}
