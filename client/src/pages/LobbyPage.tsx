@@ -302,7 +302,7 @@ const handleCloseBan = () => {
     );
   }
 
-  return (
+  
     return (
   <div className="lobby-page">
     {/* ÉCRAN DE BAN - PRIORITÉ ABSOLUE */}
