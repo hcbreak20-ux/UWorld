@@ -97,7 +97,7 @@ if (io) {
   const targetSocket = sockets.find((s: any) => s.userId === target.id);
   
   if (targetSocket) {
-    // Envoyer notification de ban
+    // 1. Envoyer notification de ban
     targetSocket.emit('banned', {
       reason,
       duration,
@@ -105,13 +105,19 @@ if (io) {
       message: `Vous avez été banni. Raison: ${reason}`
     });
     
-    // Déconnecter IMMÉDIATEMENT (sans délai)
+    // 2. Déconnecter après un court délai
     setTimeout(() => {
       targetSocket.disconnect(true);
       console.log(`🚫 ${targetUsername} banni et déconnecté`);
-    }, 500); // 500ms pour recevoir le message
+    }, 500);
+    
+    // 3. Broadcast aux autres joueurs
+    io.emit('player_banned', {
+      userId: target.id,
+      username: targetUsername
+    });
   } else {
-    console.log(`⚠️ ${targetUsername} n'est pas connecté`);
+    console.log(`⚠️ ${targetUsername} n'est pas connecté (ban appliqué quand même)`);
   }
 }
     
@@ -827,7 +833,7 @@ router.get('/logs', requirePermission('view_all_logs'), async (req, res) => {
  * Supprimer un log
  * DELETE /api/admin/logs/:logId
  */
-router.delete('/logs/:logId', requirePermission('delete_logs'), async (req, res) => {
+router.delete('/logs/:logId', requirePermission('view_all_logs'), async (req, res) => {
   const { logId } = req.params;
   const admin = (req as any).user;
   
@@ -850,7 +856,7 @@ router.delete('/logs/:logId', requirePermission('delete_logs'), async (req, res)
  * Supprimer plusieurs logs
  * POST /api/admin/logs/delete-many
  */
-router.post('/logs/delete-many', requirePermission('delete_logs'), async (req, res) => {
+router.post('/logs/delete-many', requirePermission('view_all_logs'), async (req, res) => {
   const { logIds } = req.body;
   const admin = (req as any).user;
   

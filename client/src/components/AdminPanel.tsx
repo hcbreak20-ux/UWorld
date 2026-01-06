@@ -157,22 +157,35 @@ const ModerationTab: React.FC<{ userRole: string }> = ({ userRole }) => {
       {(action === 'ban' || action === 'mute') && (
         <div className="form-group">
           <label>Durée:</label>
-          <select value={duration} onChange={(e) => setDuration(e.target.value)}>
-            <option value="5m">5 minutes</option>
-            <option value="10m">10 minutes</option>
-            <option value="15m">15 minutes</option>
-            <option value="30m">30 minutes</option>
-            <option value="1h">1 heure</option>
-            <option value="3h">3 heures</option>
-            <option value="6h">6 heures</option>
-            <option value="12h">12 heures</option>
-            <option value="24h">24 heures</option>
-            <option value="3d">3 jours</option>
-            <option value="7d">7 jours</option>
-            {(userRole === 'admin' || userRole === 'owner') && (
-              <option value="permanent">Permanent</option>
-            )}
-          </select>
+<select 
+  value={duration} 
+  onChange={(e) => setDuration(e.target.value)}
+  style={{
+    backgroundColor: '#1a1a2e',
+    color: '#ffffff',
+    border: '2px solid #6366f1',
+    borderRadius: '8px',
+    padding: '12px',
+    fontSize: '14px',
+    width: '100%',
+    cursor: 'pointer',
+  }}
+>
+  <option value="5m" style={{ backgroundColor: '#252541', color: '#ffffff' }}>5 minutes</option>
+  <option value="10m" style={{ backgroundColor: '#252541', color: '#ffffff' }}>10 minutes</option>
+  <option value="15m" style={{ backgroundColor: '#252541', color: '#ffffff' }}>15 minutes</option>
+  <option value="30m" style={{ backgroundColor: '#252541', color: '#ffffff' }}>30 minutes</option>
+  <option value="1h" style={{ backgroundColor: '#252541', color: '#ffffff' }}>1 heure</option>
+  <option value="3h" style={{ backgroundColor: '#252541', color: '#ffffff' }}>3 heures</option>
+  <option value="6h" style={{ backgroundColor: '#252541', color: '#ffffff' }}>6 heures</option>
+  <option value="12h" style={{ backgroundColor: '#252541', color: '#ffffff' }}>12 heures</option>
+  <option value="24h" style={{ backgroundColor: '#252541', color: '#ffffff' }}>24 heures</option>
+  <option value="3d" style={{ backgroundColor: '#252541', color: '#ffffff' }}>3 jours</option>
+  <option value="7d" style={{ backgroundColor: '#252541', color: '#ffffff' }}>7 jours</option>
+  {(userRole === 'admin' || userRole === 'owner') && (
+    <option value="permanent" style={{ backgroundColor: '#252541', color: '#ffffff' }}>Permanent</option>
+  )}
+</select>
         </div>
       )}
 
